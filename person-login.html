@@ -1,0 +1,980 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nutri-FarmAI | Consumer Portal — Access</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black:   #080c08;
+      --g1:      #0f2010;
+      --g2:      #1a3a1f;
+      --g4:      #2e8c38;
+      --g5:      #46c455;
+      --g6:      #8de898;
+      --gold:    #d4a83a;
+      --gold2:   #f0cc70;
+      --cream:   #f5f0e8;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      background: var(--black);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+      position: relative;
+    }
+
+    /* CUSTOM CURSOR */
+    .cursor-dot {
+      position: fixed; top:0; left:0;
+      width: 8px; height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10001;
+      transform: translate(-50%, -50%);
+    }
+    .cursor-ring {
+      position: fixed; top:0; left:0;
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(212,168,58,0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%, -50%);
+      transition: width .2s, height .2s, border-color .2s;
+    }
+    body:has(input:focus) .cursor-ring,
+    body:has(button:hover) .cursor-ring,
+    body:has(.toggle-link:hover) .cursor-ring {
+      width: 60px; height: 60px;
+      border-color: var(--gold);
+    }
+
+    /* CANVAS */
+    #bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    /* GRAIN */
+    .grain {
+      position: fixed; inset: -50%;
+      width: 200%; height: 200%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 1;
+      animation: grainShift .5s steps(2) infinite;
+    }
+    @keyframes grainShift {
+      0%   { transform: translate(0,0); }
+      25%  { transform: translate(-2%,-1%); }
+      50%  { transform: translate(1%,2%); }
+      75%  { transform: translate(2%,-2%); }
+      100% { transform: translate(0,0); }
+    }
+
+    /* NAV */
+    .navbar {
+      position: relative; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.4rem 3.5rem;
+      border-bottom: 1px solid rgba(212,168,58,0.08);
+      animation: fadeSlideDown .7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      letter-spacing: -0.03em;
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--cream);
+    }
+    .logo-mark { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+    .logo-mark svg { width: 34px; height: 34px; }
+    .logo-ai { color: var(--gold); }
+
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.72rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(245,240,232,0.4);
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold); box-shadow: 0 0 8px var(--gold);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% {opacity:1;} 50% {opacity:.3;} }
+
+    .lang-dropdown {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(212,168,58,0.18);
+      color: var(--cream);
+      padding: 0.45rem 2rem 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.82rem;
+      cursor: none;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23d4a83a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      transition: border-color .2s, background-color .2s;
+    }
+    .lang-dropdown:hover { border-color: rgba(212,168,58,0.4); background-color: rgba(212,168,58,0.06); }
+    .lang-dropdown option { background: #0f2010; }
+
+    /* LAYOUT */
+    .auth-shell {
+      position: relative; z-index: 10;
+      min-height: calc(100vh - 80px);
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      padding: 2rem 3.5rem;
+      animation: fadeUp .9s cubic-bezier(0.16,1,0.3,1) .15s both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* LEFT */
+    .auth-left {
+      padding: 2rem 3rem 2rem 0;
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 2rem;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--gold);
+      border: 1px solid rgba(212,168,58,0.3);
+      background: rgba(212,168,58,0.07);
+      padding: 0.35rem 0.9rem; border-radius: 4px;
+      width: fit-content;
+    }
+    .badge-pulse {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--gold); animation: blink 1.5s ease-in-out infinite;
+    }
+    .auth-left h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 800; line-height: 0.95;
+      letter-spacing: -0.04em;
+    }
+    .auth-left h1 .l1 { display:block; color: var(--cream); }
+    .auth-left h1 .l2 {
+      display:block;
+      background: linear-gradient(90deg, var(--gold), var(--gold2), var(--g5));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; background-size: 200%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0% {background-position:0%;} 100% {background-position:200%;} }
+
+    .auth-tagline {
+      font-size: 1rem; font-weight: 300;
+      color: rgba(245,240,232,0.5);
+      max-width: 440px; line-height: 1.75;
+    }
+
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+      border: 1.5px solid rgba(212,168,58,0.12);
+      border-radius: 16px; overflow: hidden;
+      background: rgba(212,168,58,0.08);
+      max-width: 520px;
+    }
+    .info-cell {
+      background: rgba(15,32,16,0.6);
+      backdrop-filter: blur(12px);
+      padding: 1.25rem 1.35rem;
+    }
+    .info-cell .ic-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.65rem; font-weight: 800;
+      letter-spacing: 0.12em; color: rgba(245,240,232,0.2);
+      margin-bottom: .5rem;
+    }
+    .info-cell .ic-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      color: var(--cream); letter-spacing: -0.01em;
+      margin-bottom: .25rem;
+    }
+    .info-cell .ic-sub {
+      font-size: 0.75rem; color: rgba(245,240,232,0.4);
+      line-height: 1.5;
+    }
+
+    .marquee-wrap {
+      overflow: hidden;
+      border-top: 1px solid rgba(212,168,58,0.1);
+      border-bottom: 1px solid rgba(212,168,58,0.1);
+      padding: 0.65rem 0;
+      max-width: 520px;
+    }
+    .marquee-track {
+      display: flex; gap: 2.5rem; width: max-content;
+      animation: marqueeScroll 24s linear infinite;
+    }
+    @keyframes marqueeScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .marquee-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(245,240,232,0.3); white-space: nowrap;
+    }
+    .marquee-item .dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--gold);
+    }
+
+    /* CARD */
+    .auth-right {
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem 0;
+    }
+    .auth-card {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: rgba(15,32,16,0.6);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(212,168,58,0.14);
+      border-top: 2px solid rgba(212,168,58,0.3);
+      border-radius: 20px;
+      padding: 2.25rem 2.25rem 2rem;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45),
+                  0 0 0 1px rgba(212,168,58,0.05),
+                  0 0 60px rgba(212,168,58,0.07) inset;
+    }
+    .auth-card::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% -20%, rgba(212,168,58,0.2), transparent 60%);
+      pointer-events: none;
+    }
+    .auth-card::after {
+      content: "";
+      position: absolute; top: 0; left: 0;
+      height: 2px; width: 100%;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--g5), transparent);
+      opacity: .65;
+    }
+
+    .card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+    .card-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(212,168,58,0.08);
+      border: 1px solid rgba(212,168,58,0.22);
+      border-radius: 30px;
+      padding: 5px 12px;
+    }
+    .card-chip .mini-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--gold); box-shadow: 0 0 6px var(--gold);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+    .card-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.12em; color: rgba(245,240,232,0.2);
+      padding: 4px 8px; border: 1px solid rgba(245,240,232,0.08);
+      border-radius: 4px;
+    }
+
+    .form-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem; font-weight: 800;
+      letter-spacing: -0.025em; line-height: 1.05;
+      margin-bottom: 0.35rem;
+      color: var(--cream);
+    }
+    .form-sub {
+      font-size: 0.88rem; font-weight: 300;
+      color: rgba(245,240,232,0.48);
+      line-height: 1.6; margin-bottom: 1.75rem;
+    }
+
+    /* TABS */
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: rgba(8,12,8,0.6);
+      border: 1px solid rgba(212,168,58,0.1);
+      border-radius: 10px; padding: 4px; gap: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .tab {
+      padding: 0.7rem 1rem;
+      font-size: 0.75rem; letter-spacing: 0.1em;
+      font-weight: 600; text-transform: uppercase;
+      color: rgba(245,240,232,0.45);
+      background: transparent; border: none;
+      border-radius: 7px; cursor: none;
+      transition: color .25s, background .3s;
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+    .tab.active {
+      color: var(--black);
+      background: linear-gradient(135deg, var(--gold2), var(--gold));
+      box-shadow: 0 4px 16px rgba(212,168,58,0.35);
+    }
+
+    /* FIELDS */
+    .grid-form {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+    }
+    .field { grid-column: span 1; }
+    .field.full { grid-column: span 2; }
+    .field label {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.4);
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+    .field label .req { color: var(--gold); margin-left: 2px; }
+
+    input {
+      width: 100%;
+      background: rgba(8,12,8,0.5);
+      border: 1px solid rgba(212,168,58,0.14);
+      color: var(--cream);
+      padding: 0.78rem 0.95rem;
+      border-radius: 10px;
+      outline: none;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color .25s, background .25s, box-shadow .25s;
+    }
+    input::placeholder { color: rgba(245,240,232,0.25); }
+    input:hover { border-color: rgba(212,168,58,0.28); }
+    input:focus {
+      border-color: var(--gold);
+      background: rgba(212,168,58,0.05);
+      box-shadow: 0 0 0 3px rgba(212,168,58,0.1);
+    }
+
+    /* BUTTON */
+    .submit-btn {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 0.95rem 1.1rem;
+      border-radius: 12px;
+      border: none;
+      cursor: none;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--black);
+      background: linear-gradient(135deg, var(--gold2), var(--gold));
+      position: relative;
+      overflow: hidden;
+      transition: transform .25s ease, box-shadow .25s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .submit-btn .arr {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(8,12,8,0.18);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; transition: transform .3s;
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(212,168,58,0.32);
+    }
+    .submit-btn:hover .arr { transform: rotate(45deg); }
+    .submit-btn::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(8,12,8,0.25), transparent);
+      transform: translateX(-120%);
+      transition: transform .7s;
+    }
+    .submit-btn:hover::before { transform: translateX(120%); }
+
+    .toggle-link {
+      margin-top: 1.1rem;
+      text-align: center;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      color: rgba(245,240,232,0.5);
+      cursor: none;
+    }
+    .toggle-link b {
+      color: var(--gold);
+      font-weight: 600;
+      border-bottom: 1px dashed rgba(212,168,58,0.45);
+      padding-bottom: 1px;
+      transition: color .2s, border-color .2s;
+    }
+    .toggle-link:hover b { color: var(--g5); border-color: var(--g5); }
+
+    .card-footline {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 1.25rem; padding-top: 1.1rem;
+      border-top: 1px solid rgba(212,168,58,0.1);
+      font-size: 0.68rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(245,240,232,0.28);
+    }
+    .card-footline .secure {
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .card-footline .secure::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold); box-shadow: 0 0 6px var(--gold);
+    }
+
+    /* FOOTER */
+    .footer {
+      position: relative; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.3rem 3.5rem;
+      border-top: 1px solid rgba(212,168,58,0.08);
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 800;
+      letter-spacing: -0.02em;
+      color: rgba(245,240,232,0.3);
+    }
+    .footer-copy { font-size: 0.72rem; color: rgba(245,240,232,0.2); letter-spacing: 0.06em; }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-link {
+      font-size: 0.72rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: rgba(245,240,232,0.2);
+      text-decoration: none; transition: color .2s;
+    }
+    .footer-link:hover { color: var(--gold); }
+
+    /* BACK LINK */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.75rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(245,240,232,0.4);
+      text-decoration: none; margin-bottom: 1.25rem;
+      transition: color .2s, gap .2s;
+    }
+    .back-link:hover { color: var(--gold); gap: 14px; }
+
+    /* RESPONSIVE */
+    @media (max-width: 1000px) {
+      body { cursor: auto; }
+      .cursor-dot, .cursor-ring { display: none; }
+      .navbar { padding: 1.2rem 1.5rem; }
+      .auth-shell { grid-template-columns: 1fr; padding: 1.5rem; gap: 2rem; }
+      .auth-left { padding: 0; }
+      .info-grid, .marquee-wrap { max-width: 100%; }
+      .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
+    }
+    @media (max-width: 560px) {
+      .grid-form { grid-template-columns: 1fr; }
+      .field { grid-column: span 1; }
+      .auth-card { padding: 1.5rem 1.25rem; }
+      .form-title { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Canvas bg -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Grain -->
+<div class="grain"></div>
+
+<!-- NAV -->
+<nav class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(212,168,58,0.18)" stroke="#d4a83a" stroke-width="1"/>
+        <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(212,168,58,0.1)"/>
+        <line x1="17" y1="28" x2="17" y2="6" stroke="#d4a83a" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <path d="M17 16 C20 12 24 14 26 18" stroke="#f0cc70" stroke-width="0.8" fill="none"/>
+        <path d="M17 20 C14 16 10 18 8 22" stroke="#f0cc70" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    Nutri-Farm<span class="logo-ai">AI</span>
+  </a>
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      <span id="navStatusText">Consumer · Secure</span>
+    </div>
+    <select id="homeLangSelect" onchange="changeLanguage(this.value)" class="lang-dropdown">
+      <option value="en">English</option>
+      <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="bn">বাংলা (Bengali)</option>
+      <option value="te">తెలుగు (Telugu)</option>
+      <option value="ta">தமிழ் (Tamil)</option>
+      <option value="mr">मराठी (Marathi)</option>
+      <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      <option value="gu">ગુજરાતી (Gujarati)</option>
+      <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+    </select>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="auth-shell">
+
+  <!-- LEFT -->
+  <div class="auth-left">
+    <div class="badge">
+      <div class="badge-pulse"></div>
+      <span id="heroBadge">Consumer Portal · Live Access</span>
+    </div>
+    <h1>
+      <span class="l1" id="heroLine1">Eat Smart.</span>
+      <span class="l2" id="heroLine2">Grow Nourished.</span>
+    </h1>
+    <p class="auth-tagline" id="greetingText">
+      Track your home garden, log daily nutrition, and get AI-driven insights tailored to what you grow and eat — built for the modern conscious consumer.
+    </p>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="ic-num">01</div>
+        <div class="ic-title" id="infoTitle1">Home Gardening</div>
+        <div class="ic-sub"  id="infoSub1">AI tips for balcony gardens, pots &amp; rooftops.</div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-num">02</div>
+        <div class="ic-title" id="infoTitle2">Nutrition Tracking</div>
+        <div class="ic-sub"  id="infoSub2">Log meals &amp; monitor macros and micros.</div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-num">03</div>
+        <div class="ic-title" id="infoTitle3">Seasonal Advisor</div>
+        <div class="ic-sub"  id="infoSub3">What to plant &amp; eat this month, in your region.</div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-num">04</div>
+        <div class="ic-title" id="infoTitle4">9+ Languages</div>
+        <div class="ic-sub"  id="infoSub4">Use the platform in your native language.</div>
+      </div>
+    </div>
+
+    <div class="marquee-wrap">
+      <div class="marquee-track">
+        <div class="marquee-item"><span class="dot"></span> Home Garden</div>
+        <div class="marquee-item"><span class="dot"></span> Nutrition AI</div>
+        <div class="marquee-item"><span class="dot"></span> Seasonal Eating</div>
+        <div class="marquee-item"><span class="dot"></span> Conscious Living</div>
+        <div class="marquee-item"><span class="dot"></span> Wellness</div>
+        <div class="marquee-item"><span class="dot"></span> Farm-to-Table</div>
+        <div class="marquee-item"><span class="dot"></span> Home Garden</div>
+        <div class="marquee-item"><span class="dot"></span> Nutrition AI</div>
+        <div class="marquee-item"><span class="dot"></span> Seasonal Eating</div>
+        <div class="marquee-item"><span class="dot"></span> Conscious Living</div>
+        <div class="marquee-item"><span class="dot"></span> Wellness</div>
+        <div class="marquee-item"><span class="dot"></span> Farm-to-Table</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <a href="index.html" class="back-link">← <span id="backTxt">Back to Home</span></a>
+
+      <div class="card-top">
+        <div class="card-chip">
+          <div class="mini-dot"></div>
+          <span id="chipText">Secure · Encrypted</span>
+        </div>
+        <div class="card-num">02 / CONSUMER</div>
+      </div>
+
+      <h2 class="form-title" id="formTitle">Consumer Login</h2>
+      <p class="form-sub" id="formSub">Welcome back. Sign in to track your garden &amp; nutrition.</p>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab" id="tabRegister" onclick="toggleView(false)">Register</button>
+        <button type="button" class="tab active" id="tabLogin" onclick="toggleView(true)">Login</button>
+      </div>
+
+      <!-- REGISTER -->
+      <form id="regForm" style="display:none">
+        <div class="grid-form">
+          <div class="field full">
+            <label id="lblName">Full Name <span class="req">*</span></label>
+            <input type="text" id="cName" placeholder="Your full name" required>
+          </div>
+          <div class="field full">
+            <label id="lblState">State <span class="req">*</span></label>
+            <input type="text" id="cState" placeholder="e.g. Odisha" required>
+          </div>
+          <div class="field full">
+            <label id="lblEmail">Email Address <span class="req">*</span></label>
+            <input type="email" id="cEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="field full">
+            <label id="lblPass">Password <span class="req">*</span></label>
+            <input type="password" id="cPass" placeholder="Create a strong password" required>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn">
+          <span id="regBtnText">Create Account</span>
+          <span class="arr">→</span>
+        </button>
+        <div class="toggle-link" onclick="toggleView(true)">
+          <span id="toLoginTxt">Already have an account?</span> <b>Login here</b>
+        </div>
+      </form>
+
+      <!-- LOGIN -->
+      <form id="loginForm">
+        <div class="grid-form">
+          <div class="field full">
+            <label id="lblLoginEmail">Email Address <span class="req">*</span></label>
+            <input type="email" id="loginEmailConsumer" placeholder="you@example.com" required>
+          </div>
+          <div class="field full">
+            <label id="lblLoginPass">Password <span class="req">*</span></label>
+            <input type="password" id="loginPassConsumer" placeholder="Your password" required>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn">
+          <span id="loginBtnText">Login to Dashboard</span>
+          <span class="arr">→</span>
+        </button>
+        <div class="toggle-link" onclick="toggleView(false)">
+          <span id="toRegTxt">New Consumer?</span> <b>Create Account here</b>
+        </div>
+      </form>
+
+      <div class="card-footline">
+        <div class="secure" id="secureText">End-to-end Encrypted</div>
+        <div id="aiReadyText">AI Ready</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+  <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Support</a>
+  </div>
+</footer>
+
+<!-- Supabase + your existing external script preserved -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+
+<script>
+/* ── Custom cursor ── */
+const dot  = document.getElementById('cursorDot');
+const ring = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+(function loop(){
+  rx += (mx-rx)*0.14; ry += (my-ry)*0.14;
+  dot.style.left = mx+'px';  dot.style.top = my+'px';
+  ring.style.left = rx+'px'; ring.style.top = ry+'px';
+  requestAnimationFrame(loop);
+})();
+
+/* ── Canvas particle network (gold-tinted) ── */
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+class Particle {
+  constructor(){ this.reset(); }
+  reset(){
+    this.x = Math.random()*W; this.y = Math.random()*H;
+    this.vx = (Math.random()-0.5)*0.32;
+    this.vy = (Math.random()-0.5)*0.32;
+    this.r = Math.random()*1.8 + 0.4;
+    this.a = Math.random()*0.5 + 0.1;
+    this.life = 0; this.maxLife = Math.random()*400 + 200;
+    this.gold = Math.random() > 0.55; // mix of gold & green
+  }
+  update(){
+    this.x += this.vx; this.y += this.vy; this.life++;
+    if (this.x<0||this.x>W||this.y<0||this.y>H||this.life>this.maxLife) this.reset();
+  }
+  draw(){
+    const fade = Math.min(this.life/40,1) * Math.min((this.maxLife-this.life)/40,1);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fillStyle = this.gold
+      ? `rgba(212,168,58,${this.a*fade})`
+      : `rgba(70,196,85,${this.a*fade*0.7})`;
+    ctx.fill();
+  }
+}
+for (let i=0;i<110;i++) particles.push(new Particle());
+
+function drawLines(){
+  for (let i=0;i<particles.length;i++){
+    for (let j=i+1;j<particles.length;j++){
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d  = Math.sqrt(dx*dx+dy*dy);
+      if (d<100){
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(212,168,58,${0.1*(1 - d/100)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+function animCanvas(){
+  ctx.clearRect(0,0,W,H);
+  const grd = ctx.createRadialGradient(W*0.5, H*0.35, 0, W*0.5, H*0.35, H*0.8);
+  grd.addColorStop(0,   'rgba(120,90,30,0.06)');
+  grd.addColorStop(0.5, 'rgba(15,32,16,0.03)');
+  grd.addColorStop(1,   'rgba(8,12,8,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0,0,W,H);
+  drawLines();
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animCanvas);
+}
+animCanvas();
+
+/* ── Toggle (same API as original) ── */
+function toggleView(showLogin) {
+  const reg   = document.getElementById('regForm');
+  const login = document.getElementById('loginForm');
+  const title = document.getElementById('formTitle');
+  const sub   = document.getElementById('formSub');
+  const tabR  = document.getElementById('tabRegister');
+  const tabL  = document.getElementById('tabLogin');
+
+  reg.style.display   = showLogin ? 'none' : 'block';
+  login.style.display = showLogin ? 'block' : 'none';
+  title.innerText = showLogin
+    ? (window.__i18n?.loginTitle || 'Consumer Login')
+    : (window.__i18n?.regTitle   || 'Consumer Registration');
+  sub.innerText = showLogin
+    ? (window.__i18n?.loginSub || 'Welcome back. Sign in to track your garden & nutrition.')
+    : (window.__i18n?.regSub   || 'Create your account to start tracking gardens & nutrition.');
+
+  tabL.classList.toggle('active', showLogin);
+  tabR.classList.toggle('active', !showLogin);
+}
+toggleView(true); // default: Login
+
+/* ── i18n (visual only — your Supabase script still runs) ── */
+const i18n = {
+  en: { badge:'Consumer Portal · Live Access', line1:'Eat Smart.', line2:'Grow Nourished.',
+    tagline:'Track your home garden, log daily nutrition, and get AI-driven insights tailored to what you grow and eat — built for the modern conscious consumer.',
+    regTitle:'Consumer Registration', regSub:'Create your account to start tracking gardens & nutrition.',
+    loginTitle:'Consumer Login', loginSub:'Welcome back. Sign in to track your garden & nutrition.',
+    chip:'Secure · Encrypted', navStatus:'Consumer · Secure', back:'Back to Home',
+    name:'Full Name', state:'State', email:'Email Address', pass:'Password',
+    loginEmail:'Email Address', loginPass:'Password',
+    regBtn:'Create Account', loginBtn:'Login to Dashboard',
+    toLogin:'Already have an account?', toReg:'New Consumer?',
+    secure:'End-to-end Encrypted', aiReady:'AI Ready',
+    t1:'Home Gardening', s1:'AI tips for balcony gardens, pots & rooftops.',
+    t2:'Nutrition Tracking', s2:'Log meals & monitor macros and micros.',
+    t3:'Seasonal Advisor', s3:'What to plant & eat this month, in your region.',
+    t4:'9+ Languages', s4:'Use the platform in your native language.' },
+  or: { badge:'ଉପଭୋକ୍ତା ପୋର୍ଟାଲ · ଲାଇଭ୍ ଆକ୍ସେସ୍', line1:'ବୁଦ୍ଧିମାନ ଭୋଜନ।', line2:'ପୋଷଣ ସହିତ ବଢ଼।',
+    tagline:'ନିଜ ବଗିଚା ଟ୍ରାକ୍ କରନ୍ତୁ, ଭୋଜନ ଲଗ୍ କରନ୍ତୁ ଓ AI ଚାଳିତ ପରାମର୍ଶ ପାଆନ୍ତୁ।',
+    regTitle:'ଉପଭୋକ୍ତା ପଞ୍ଜିକରଣ', regSub:'ନିଜ ଖାତା ତିଆରି କରନ୍ତୁ।',
+    loginTitle:'ଉପଭୋକ୍ତା ଲଗଇନ', loginSub:'ଆପଣଙ୍କ ଡ୍ୟାଶବୋର୍ଡକୁ ସାଇନ ଇନ୍ କରନ୍ତୁ।',
+    chip:'ସୁରକ୍ଷିତ · ଏନ୍କ୍ରିପ୍ଟେଡ୍', navStatus:'ଉପଭୋକ୍ତା ସକ୍ରିୟ', back:'ମୂଳ ପୃଷ୍ଠାକୁ',
+    name:'ପୂର୍ଣ୍ଣ ନାମ', state:'ରାଜ୍ୟ', email:'ଇମେଲ୍', pass:'ପାସୱାର୍ଡ',
+    loginEmail:'ଇମେଲ୍', loginPass:'ପାସୱାର୍ଡ',
+    regBtn:'ଖାତା ତିଆରି କରନ୍ତୁ', loginBtn:'ଡ୍ୟାଶବୋର୍ଡକୁ ଲଗଇନ୍',
+    toLogin:'ପୂର୍ବରୁ ଖାତା ଅଛି?', toReg:'ନୂଆ ଉପଭୋକ୍ତା?',
+    secure:'ଏଣ୍ଡ-ଟୁ-ଏଣ୍ଡ ଏନ୍କ୍ରିପ୍ଟେଡ୍', aiReady:'AI ପ୍ରସ୍ତୁତ',
+    t1:'ଗୃହ ବଗିଚା', s1:'ବାଲକୋନି ଏବଂ ଛାତ ବଗିଚା ପାଇଁ AI ପରାମର୍ଶ।',
+    t2:'ପୁଷ୍ଟି ଟ୍ରାକିଂ', s2:'ଭୋଜନ ଲଗ୍ ଓ ପୁଷ୍ଟି ମନିଟରିଂ।',
+    t3:'ମୌସୁମୀ ପରାମର୍ଶ', s3:'ଆପଣଙ୍କ ଅଞ୍ଚଳରେ ଏ ମାସ କଣ ରୋପଣ କରିବେ।',
+    t4:'୯+ ଭାଷା', s4:'ଆପଣଙ୍କ ନିଜ ଭାଷାରେ ବ୍ୟବହାର କରନ୍ତୁ।' },
+  hi: { badge:'उपभोक्ता पोर्टल · लाइव एक्सेस', line1:'समझदारी से खाएं।', line2:'पोषण से बढ़ें।',
+    tagline:'घर का बगीचा ट्रैक करें, पोषण लॉग करें और अपनी भाषा में AI अंतर्दृष्टि पाएं।',
+    regTitle:'उपभोक्ता पंजीकरण', regSub:'खाता बनाएं और बगीचा एवं पोषण ट्रैक करें।',
+    loginTitle:'उपभोक्ता लॉगिन', loginSub:'वापसी पर स्वागत है। अपने डैशबोर्ड में साइन इन करें।',
+    chip:'सुरक्षित · एन्क्रिप्टेड', navStatus:'उपभोक्ता सक्रिय', back:'होम पर वापस',
+    name:'पूरा नाम', state:'राज्य', email:'ईमेल पता', pass:'पासवर्ड',
+    loginEmail:'ईमेल पता', loginPass:'पासवर्ड',
+    regBtn:'खाता बनाएँ', loginBtn:'डैशबोर्ड में लॉगिन',
+    toLogin:'पहले से खाता है?', toReg:'नए उपभोक्ता?',
+    secure:'एंड-टू-एंड एन्क्रिप्टेड', aiReady:'AI तैयार',
+    t1:'घरेलू बागवानी', s1:'बालकनी, गमले और छत के लिए AI सुझाव।',
+    t2:'पोषण ट्रैकिंग', s2:'भोजन लॉग और मैक्रो/माइक्रो मॉनिटर।',
+    t3:'मौसमी सलाह', s3:'इस महीने क्या बोएं और क्या खाएं।',
+    t4:'9+ भाषाएँ', s4:'अपनी भाषा में उपयोग करें।' },
+  bn: { badge:'ভোক্তা পোর্টাল · লাইভ অ্যাক্সেস', line1:'বুদ্ধিমানের মতো খান।', line2:'পুষ্টির সাথে বাড়ুন।',
+    tagline:'বাড়ির বাগান ট্র্যাক করুন, পুষ্টি লগ করুন এবং AI অন্তর্দৃষ্টি পান।',
+    regTitle:'ভোক্তা নিবন্ধন', regSub:'অ্যাকাউন্ট তৈরি করুন।',
+    loginTitle:'ভোক্তা লগইন', loginSub:'স্বাগতম। ড্যাশবোর্ডে সাইন ইন করুন।',
+    chip:'সুরক্ষিত · এনক্রিপ্টেড', navStatus:'ভোক্তা সক্রিয়', back:'হোমে ফিরুন',
+    name:'পুরো নাম', state:'রাজ্য', email:'ইমেল', pass:'পাসওয়ার্ড',
+    loginEmail:'ইমেল', loginPass:'পাসওয়ার্ড',
+    regBtn:'অ্যাকাউন্ট তৈরি করুন', loginBtn:'ড্যাশবোর্ডে লগইন',
+    toLogin:'ইতিমধ্যে অ্যাকাউন্ট আছে?', toReg:'নতুন ভোক্তা?',
+    secure:'এন্ড-টু-এন্ড এনক্রিপ্টেড', aiReady:'AI প্রস্তুত',
+    t1:'ঘরের বাগান', s1:'বারান্দা, টব ও ছাদের জন্য AI পরামর্শ।',
+    t2:'পুষ্টি ট্র্যাকিং', s2:'খাবার লগ ও পুষ্টি মনিটর।',
+    t3:'মৌসুমি পরামর্শ', s3:'এই মাসে কী লাগাবেন ও খাবেন।',
+    t4:'৯+ ভাষা', s4:'আপনার ভাষায় ব্যবহার করুন।' },
+  te: { badge:'వినియోగదారు పోర్టల్ · లైవ్ యాక్సెస్', line1:'తెలివిగా తినండి.', line2:'పోషణతో పెరగండి.',
+    tagline:'ఇంటి తోటను ట్రాక్ చేయండి, పోషకాహారాన్ని లాగ్ చేయండి & AI సలహాలు పొందండి.',
+    regTitle:'వినియోగదారు నమోదు', regSub:'ఖాతా సృష్టించండి.',
+    loginTitle:'వినియోగదారు లాగిన్', loginSub:'తిరిగి స్వాగతం.',
+    chip:'సురక్షితం · ఎన్క్రిప్టెడ్', navStatus:'వినియోగదారు యాక్టివ్', back:'హోమ్‌కు తిరిగి',
+    name:'పూర్తి పేరు', state:'రాష్ట్రం', email:'ఇమెయిల్', pass:'పాస్‌వర్డ్',
+    loginEmail:'ఇమెయిల్', loginPass:'పాస్‌వర్డ్',
+    regBtn:'ఖాతా సృష్టించండి', loginBtn:'డాష్‌బోర్డ్‌కు లాగిన్',
+    toLogin:'ఇప్పటికే ఖాతా ఉందా?', toReg:'కొత్త వినియోగదారు?',
+    secure:'ఎండ్-టు-ఎండ్ ఎన్క్రిప్టెడ్', aiReady:'AI సిద్ధం',
+    t1:'ఇంటి తోట', s1:'బాల్కనీ, కుండీలు & మేడల కోసం AI చిట్కాలు.',
+    t2:'పోషణ ట్రాకింగ్', s2:'భోజనం లాగ్ & పోషకాల మానిటరింగ్.',
+    t3:'సీజనల్ సలహా', s3:'ఈ నెలలో ఏమి నాటాలి & ఏమి తినాలి.',
+    t4:'9+ భాషలు', s4:'మీ స్వంత భాషలో వాడండి.' },
+  ta: { badge:'நுகர்வோர் போர்டல் · நேரடி அணுகல்', line1:'புத்திசாலியாக சாப்பிடுங்கள்.', line2:'ஊட்டமுடன் வளருங்கள்.',
+    tagline:'உங்கள் வீட்டுத் தோட்டத்தைக் கண்காணியுங்கள், ஊட்டச்சத்தை பதிவு செய்யுங்கள்.',
+    regTitle:'நுகர்வோர் பதிவு', regSub:'கணக்கை உருவாக்கவும்.',
+    loginTitle:'நுகர்வோர் உள்நுழைவு', loginSub:'மீண்டும் வரவேற்கிறோம்.',
+    chip:'பாதுகாப்பு · குறியாக்கம்', navStatus:'நுகர்வோர் செயலில்', back:'முகப்புக்கு',
+    name:'முழு பெயர்', state:'மாநிலம்', email:'மின்னஞ்சல்', pass:'கடவுச்சொல்',
+    loginEmail:'மின்னஞ்சல்', loginPass:'கடவுச்சொல்',
+    regBtn:'கணக்கை உருவாக்கு', loginBtn:'டாஷ்போர்டுக்கு உள்நுழை',
+    toLogin:'ஏற்கனவே கணக்கு உள்ளதா?', toReg:'புதிய நுகர்வோரா?',
+    secure:'முழுமையான குறியாக்கம்', aiReady:'AI தயார்',
+    t1:'வீட்டுத் தோட்டம்', s1:'பால்கனி, தொட்டிகள் & மாடிகளுக்கான AI குறிப்புகள்.',
+    t2:'ஊட்டச்சத்து கண்காணிப்பு', s2:'உணவு பதிவு & ஊட்டச்சத்து கண்காணிப்பு.',
+    t3:'பருவ ஆலோசனை', s3:'இந்த மாதம் என்ன நடுவது & சாப்பிடுவது.',
+    t4:'9+ மொழிகள்', s4:'உங்கள் மொழியில் பயன்படுத்தவும்.' },
+  mr: { badge:'ग्राहक पोर्टल · थेट प्रवेश', line1:'हुशारीने खा.', line2:'पोषणासह वाढा.',
+    tagline:'घराचे बाग ट्रॅक करा, पोषण लॉग करा आणि AI सल्ला मिळवा.',
+    regTitle:'ग्राहक नोंदणी', regSub:'खाते तयार करा.',
+    loginTitle:'ग्राहक लॉगिन', loginSub:'पुन्हा स्वागत.',
+    chip:'सुरक्षित · एन्क्रिप्टेड', navStatus:'ग्राहक सक्रिय', back:'मुख्य पृष्ठावर',
+    name:'पूर्ण नाव', state:'राज्य', email:'ईमेल', pass:'पासवर्ड',
+    loginEmail:'ईमेल', loginPass:'पासवर्ड',
+    regBtn:'खाते तयार करा', loginBtn:'डॅशबोर्डमध्ये लॉगिन',
+    toLogin:'आधीच खाते आहे?', toReg:'नवीन ग्राहक?',
+    secure:'एंड-टू-एंड एन्क्रिप्टेड', aiReady:'AI तयार',
+    t1:'घराचे बाग', s1:'बाल्कनी, कुंड्या व छतांसाठी AI सल्ला.',
+    t2:'पोषण ट्रॅकिंग', s2:'जेवण लॉग व पोषण मॉनिटरिंग.',
+    t3:'हंगामी सल्ला', s3:'या महिन्यात काय लावावे व खावे.',
+    t4:'9+ भाषा', s4:'आपल्या भाषेत वापरा.' },
+  kn: { badge:'ಗ್ರಾಹಕ ಪೋರ್ಟಲ್ · ಲೈವ್ ಪ್ರವೇಶ', line1:'ಬುದ್ಧಿವಂತಿಕೆಯಿಂದ ತಿನ್ನಿ.', line2:'ಪೋಷಣೆಯೊಂದಿಗೆ ಬೆಳೆಯಿರಿ.',
+    tagline:'ಮನೆ ತೋಟವನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ, ಪೋಷಣೆಯನ್ನು ಲಾಗ್ ಮಾಡಿ & AI ಒಳನೋಟಗಳನ್ನು ಪಡೆಯಿರಿ.',
+    regTitle:'ಗ್ರಾಹಕ ನೋಂದಣಿ', regSub:'ಖಾತೆ ರಚಿಸಿ.',
+    loginTitle:'ಗ್ರಾಹಕ ಲಾಗಿನ್', loginSub:'ಮರಳಿ ಸ್ವಾಗತ.',
+    chip:'ಸುರಕ್ಷಿತ · ಎನ್‌ಕ್ರಿಪ್ಟೆಡ್', navStatus:'ಗ್ರಾಹಕ ಸಕ್ರಿಯ', back:'ಮುಖಪುಟಕ್ಕೆ',
+    name:'ಪೂರ್ಣ ಹೆಸರು', state:'ರಾಜ್ಯ', email:'ಇಮೇಲ್', pass:'ಪಾಸ್ವರ್ಡ್',
+    loginEmail:'ಇಮೇಲ್', loginPass:'ಪಾಸ್ವರ್ಡ್',
+    regBtn:'ಖಾತೆ ರಚಿಸಿ', loginBtn:'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಲಾಗಿನ್',
+    toLogin:'ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ?', toReg:'ಹೊಸ ಗ್ರಾಹಕರೇ?',
+    secure:'ಎಂಡ್-ಟು-ಎಂಡ್ ಎನ್‌ಕ್ರಿಪ್ಟೆಡ್', aiReady:'AI ಸಿದ್ಧ',
+    t1:'ಮನೆ ತೋಟ', s1:'ಬಾಲ್ಕನಿ, ಕುಂಡಗಳು & ಮೇಲ್ಛಾವಣಿಗಳಿಗೆ AI ಸಲಹೆಗಳು.',
+    t2:'ಪೋಷಣೆ ಟ್ರ್ಯಾಕಿಂಗ್', s2:'ಆಹಾರ ಲಾಗ್ & ಪೋಷಕಾಂಶ ಮಾನಿಟರಿಂಗ್.',
+    t3:'ಋತುಮಾನ ಸಲಹೆ', s3:'ಈ ತಿಂಗಳು ಏನು ನೆಡಬೇಕು & ಏನು ತಿನ್ನಬೇಕು.',
+    t4:'9+ ಭಾಷೆಗಳು', s4:'ನಿಮ್ಮ ಸ್ವಂತ ಭಾಷೆಯಲ್ಲಿ ಬಳಸಿ.' },
+  gu: { badge:'ગ્રાહક પોર્ટલ · લાઈવ એક્સેસ', line1:'સ્માર્ટ ખાઓ.', line2:'પોષણ સાથે વધો.',
+    tagline:'ઘરના બગીચાને ટ્રેક કરો, પોષણ લોગ કરો અને AI અંતર્દૃષ્ટિ મેળવો.',
+    regTitle:'ગ્રાહક નોંધણી', regSub:'ખાતું બનાવો.',
+    loginTitle:'ગ્રાહક લોગિન', loginSub:'ફરી સ્વાગત.',
+    chip:'સુરક્ષિત · એન્ક્રિપ્ટેડ', navStatus:'ગ્રાહક સક્રિય', back:'મુખ્ય પૃષ્ઠ પર',
+    name:'પૂરું નામ', state:'રાજ્ય', email:'ઈમેલ', pass:'પાસવર્ડ',
+    loginEmail:'ઈમેલ', loginPass:'પાસવર્ડ',
+    regBtn:'ખાતું બનાવો', loginBtn:'ડેશબોર્ડમાં લોગિન',
+    toLogin:'પહેલેથી ખાતું છે?', toReg:'નવા ગ્રાહક?',
+    secure:'એન્ડ-ટુ-એન્ડ એન્ક્રિપ્ટેડ', aiReady:'AI તૈયાર',
+    t1:'ઘરનું બગીચું', s1:'બાલ્કની, કૂંડાં & છત માટે AI સૂચનો.',
+    t2:'પોષણ ટ્રેકિંગ', s2:'ભોજન લોગ & પોષણ મોનિટરિંગ.',
+    t3:'ઋતુગત સલાહ', s3:'આ મહિને શું વાવવું & શું ખાવું.',
+    t4:'9+ ભાષાઓ', s4:'તમારી પોતાની ભાષામાં વાપરો.' },
+  pa: { badge:'ਖਪਤਕਾਰ ਪੋਰਟਲ · ਲਾਈਵ ਐਕਸੈੱਸ', line1:'ਸਮਝਦਾਰੀ ਨਾਲ ਖਾਓ.', line2:'ਪੋਸ਼ਣ ਨਾਲ ਵਧੋ.',
+    tagline:'ਆਪਣੇ ਘਰ ਦੇ ਬਾਗ਼ ਨੂੰ ਟਰੈਕ ਕਰੋ, ਪੋਸ਼ਣ ਲਾੱਗ ਕਰੋ ਅਤੇ AI ਸਲਾਹ ਪਾਓ.',
+    regTitle:'ਖਪਤਕਾਰ ਰਜਿਸਟ੍ਰੇਸ਼ਨ', regSub:'ਖਾਤਾ ਬਣਾਓ.',
+    loginTitle:'ਖਪਤਕਾਰ ਲੌਗਿਨ', loginSub:'ਮੁੜ ਜੀ ਆਇਆਂ ਨੂੰ.',
+    chip:'ਸੁਰੱਖਿਅਤ · ਐਨਕ੍ਰਿਪਟਿਡ', navStatus:'ਖਪਤਕਾਰ ਸਰਗਰਮ', back:'ਹੋਮ ਵੱਲ',
+    name:'ਪੂਰਾ ਨਾਂ', state:'ਰਾਜ', email:'ਈਮੇਲ', pass:'ਪਾਸਵਰਡ',
+    loginEmail:'ਈਮੇਲ', loginPass:'ਪਾਸਵਰਡ',
+    regBtn:'ਖਾਤਾ ਬਣਾਓ', loginBtn:'ਡੈਸ਼ਬੋਰਡ ਤੇ ਲੌਗਿਨ',
+    toLogin:'ਪਹਿਲਾਂ ਹੀ ਖਾਤਾ ਹੈ?', toReg:'ਨਵੇਂ ਖਪਤਕਾਰ?',
+    secure:'ਐਂਡ-ਟੂ-ਐਂਡ ਐਨਕ੍ਰਿਪਟਿਡ', aiReady:'AI ਤਿਆਰ',
+    t1:'ਘਰੇਲੂ ਬਾਗ਼', s1:'ਬਾਲਕੋਨੀ, ਗਮਲੇ ਤੇ ਛੱਤਾਂ ਲਈ AI ਸੁਝਾਅ.',
+    t2:'ਪੋਸ਼ਣ ਟਰੈਕਿੰਗ', s2:'ਭੋਜਨ ਲਾੱਗ ਤੇ ਪੋਸ਼ਣ ਨਿਗਰਾਨੀ.',
+    t3:'ਮੌਸਮੀ ਸਲਾਹ', s3:'ਇਸ ਮਹੀਨੇ ਕੀ ਲਗਾਉਣਾ ਤੇ ਕੀ ਖਾਣਾ.',
+    t4:'9+ ਭਾਸ਼ਾਵਾਂ', s4:'ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਵਰਤੋਂ.' }
+};
+
+/* Chain into your existing script.js changeLanguage (if any) */
+const __originalChangeLanguage = (typeof window.changeLanguage === 'function') ? window.changeLanguage : null;
+
+window.changeLanguage = function(lang) {
+  const d = i18n[lang] || i18n.en;
+  window.__i18n = d;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && typeof v === 'string') el.textContent = v; };
+  set('heroBadge', d.badge); set('heroLine1', d.line1); set('heroLine2', d.line2);
+  set('greetingText', d.tagline); set('chipText', d.chip); set('navStatusText', d.navStatus);
+  set('backTxt', d.back);
+  set('lblName',  d.name + ' *');
+  set('lblState', d.state + ' *');
+  set('lblEmail', d.email + ' *');
+  set('lblPass',  d.pass + ' *');
+  set('lblLoginEmail', d.loginEmail + ' *');
+  set('lblLoginPass',  d.loginPass + ' *');
+  set('regBtnText', d.regBtn); set('loginBtnText', d.loginBtn);
+  set('toLoginTxt', d.toLogin); set('toRegTxt', d.toReg);
+  set('secureText', d.secure); set('aiReadyText', d.aiReady);
+  set('infoTitle1', d.t1); set('infoSub1', d.s1);
+  set('infoTitle2', d.t2); set('infoSub2', d.s2);
+  set('infoTitle3', d.t3); set('infoSub3', d.s3);
+  set('infoTitle4', d.t4); set('infoSub4', d.s4);
+
+  const loginVisible = document.getElementById('loginForm').style.display !== 'none';
+  toggleView(loginVisible);
+
+  try { __originalChangeLanguage && __originalChangeLanguage(lang); } catch(e) {}
+};
+window.changeLanguage('en');
+</script>
+</body>
+</html>

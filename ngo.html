@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NGO Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>🧑‍⚕️ NGO Monitoring Dashboard</h2>
+
+<div class="card">
+    <h3>🔍 Filters</h3>
+
+    <input type="text" id="village" placeholder="Village / Block">
+
+    <select id="ngoSeason">
+        <option>Kharif</option>
+        <option>Rabi</option>
+    </select>
+
+    <button onclick="ngoOutput()">View Insights</button>
+    
+    <button onclick="showUpcoming()" style="margin-top: 10px; background-color: #00ff88; color: #000; font-weight: bold; border-radius: 5px; cursor: pointer;">📅 View Upcoming Projects</button>
+</div>
+
+<div id="upcomingSection" class="card" style="display: none; border: 2px solid #00ff88;">
+    <h3 style="color: #00ff88;">🚀 Upcoming Initiatives</h3>
+    <div id="upcomingList">
+        </div>
+</div>
+
+<div class="card">
+    <h3>📊 Indicators</h3>
+    <p>Diet Diversity: <b id="diversity"></b></p>
+    <p>Anemia Risk: <b id="risk"></b></p>
+</div>
+
+<div class="card">
+    <h3>📌 Insights</h3>
+    <ul id="ngoInsights"></ul>
+</div>
+
+<a href="index.html">⬅ Back</a>
+
+<script src="script.js"></script>
+</body>
+</html>

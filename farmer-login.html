@@ -1,0 +1,1031 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nutri-FarmAI | Farmer Portal — Access</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black:   #080c08;
+      --g1:      #0f2010;
+      --g2:      #1a3a1f;
+      --g3:      #24622c;
+      --g4:      #2e8c38;
+      --g5:      #46c455;
+      --g6:      #8de898;
+      --gold:    #d4a83a;
+      --gold2:   #f0cc70;
+      --cream:   #f5f0e8;
+      --offwhite:#e8f0e9;
+      --danger:  #ff6b6b;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      background: var(--black);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+      position: relative;
+    }
+
+    /* CUSTOM CURSOR */
+    .cursor-dot {
+      position: fixed; top:0; left:0;
+      width: 8px; height: 8px;
+      background: var(--g5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10001;
+      transform: translate(-50%, -50%);
+    }
+    .cursor-ring {
+      position: fixed; top:0; left:0;
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(70,196,85,0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%, -50%);
+      transition: width .2s, height .2s, border-color .2s;
+    }
+    body:has(input:focus) .cursor-ring,
+    body:has(button:hover) .cursor-ring,
+    body:has(.toggle-link:hover) .cursor-ring {
+      width: 60px; height: 60px;
+      border-color: var(--g5);
+    }
+
+    /* CANVAS */
+    #bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    /* GRAIN */
+    .grain {
+      position: fixed; inset: -50%;
+      width: 200%; height: 200%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 1;
+      animation: grainShift .5s steps(2) infinite;
+    }
+    @keyframes grainShift {
+      0%   { transform: translate(0,0); }
+      25%  { transform: translate(-2%,-1%); }
+      50%  { transform: translate(1%,2%); }
+      75%  { transform: translate(2%,-2%); }
+      100% { transform: translate(0,0); }
+    }
+
+    /* NAV */
+    .navbar {
+      position: relative; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.4rem 3.5rem;
+      border-bottom: 1px solid rgba(70,196,85,0.08);
+      animation: fadeSlideDown .7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      letter-spacing: -0.03em;
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--cream);
+    }
+    .logo-mark { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+    .logo-mark svg { width: 34px; height: 34px; }
+    .logo-ai { color: var(--gold); }
+
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.72rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(245,240,232,0.4);
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--g5); box-shadow: 0 0 8px var(--g5);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% {opacity:1;} 50% {opacity:.3;} }
+
+    .lang-dropdown {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(70,196,85,0.15);
+      color: var(--cream);
+      padding: 0.45rem 2rem 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.82rem;
+      cursor: none;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      transition: border-color .2s, background-color .2s;
+    }
+    .lang-dropdown:hover { border-color: rgba(70,196,85,0.35); background-color: rgba(70,196,85,0.05); }
+    .lang-dropdown option { background: #0f2010; }
+
+    /* MAIN LAYOUT */
+    .auth-shell {
+      position: relative; z-index: 10;
+      min-height: calc(100vh - 80px);
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 0;
+      padding: 2rem 3.5rem 2rem;
+      align-items: stretch;
+      animation: fadeUp .9s cubic-bezier(0.16,1,0.3,1) .15s both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* LEFT HERO */
+    .auth-left {
+      padding: 2rem 3rem 2rem 0;
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 2rem;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--gold);
+      border: 1px solid rgba(212,168,58,0.3);
+      background: rgba(212,168,58,0.07);
+      padding: 0.35rem 0.9rem; border-radius: 4px;
+      width: fit-content;
+    }
+    .badge-pulse {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--gold); animation: blink 1.5s ease-in-out infinite;
+    }
+    .auth-left h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 800; line-height: 0.95;
+      letter-spacing: -0.04em;
+    }
+    .auth-left h1 .l1 { display:block; color: var(--cream); }
+    .auth-left h1 .l2 {
+      display:block;
+      background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; background-size: 200%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0% {background-position:0%;} 100% {background-position:200%;} }
+
+    .auth-tagline {
+      font-size: 1rem; font-weight: 300;
+      color: rgba(245,240,232,0.5);
+      max-width: 440px; line-height: 1.75;
+    }
+
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      border: 1.5px solid rgba(70,196,85,0.1);
+      border-radius: 16px; overflow: hidden;
+      background: rgba(70,196,85,0.08);
+      max-width: 520px;
+    }
+    .info-cell {
+      background: rgba(15,32,16,0.6);
+      backdrop-filter: blur(12px);
+      padding: 1.25rem 1.35rem;
+      position: relative;
+    }
+    .info-cell .ic-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.65rem; font-weight: 800;
+      letter-spacing: 0.12em; color: rgba(245,240,232,0.2);
+      margin-bottom: .5rem;
+    }
+    .info-cell .ic-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      color: var(--cream); letter-spacing: -0.01em;
+      margin-bottom: .25rem;
+    }
+    .info-cell .ic-sub {
+      font-size: 0.75rem; color: rgba(245,240,232,0.4);
+      line-height: 1.5;
+    }
+
+    .marquee-wrap {
+      overflow: hidden;
+      border-top: 1px solid rgba(70,196,85,0.08);
+      border-bottom: 1px solid rgba(70,196,85,0.08);
+      padding: 0.65rem 0;
+      max-width: 520px;
+    }
+    .marquee-track {
+      display: flex; gap: 2.5rem; width: max-content;
+      animation: marqueeScroll 24s linear infinite;
+    }
+    @keyframes marqueeScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .marquee-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(245,240,232,0.3); white-space: nowrap;
+    }
+    .marquee-item .dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--g4);
+    }
+
+    /* RIGHT AUTH CARD */
+    .auth-right {
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem 0;
+    }
+    .auth-card {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: rgba(15,32,16,0.6);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(70,196,85,0.12);
+      border-top: 2px solid rgba(70,196,85,0.25);
+      border-radius: 20px;
+      padding: 2.25rem 2.25rem 2rem;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45),
+                  0 0 0 1px rgba(70,196,85,0.04),
+                  0 0 60px rgba(70,196,85,0.06) inset;
+    }
+    .auth-card::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% -20%, rgba(70,196,85,0.18), transparent 60%);
+      pointer-events: none;
+    }
+    .auth-card::after {
+      content: "";
+      position: absolute; top: 0; left: 0;
+      height: 2px; width: 100%;
+      background: linear-gradient(90deg, transparent, var(--g5), var(--gold), transparent);
+      opacity: .6;
+    }
+
+    .card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .card-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--g5);
+      background: rgba(70,196,85,0.08);
+      border: 1px solid rgba(70,196,85,0.18);
+      border-radius: 30px;
+      padding: 5px 12px;
+    }
+    .card-chip .mini-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--g5); box-shadow: 0 0 6px var(--g5);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+    .card-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.12em; color: rgba(245,240,232,0.2);
+      padding: 4px 8px; border: 1px solid rgba(245,240,232,0.08);
+      border-radius: 4px;
+    }
+
+    .form-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem; font-weight: 800;
+      letter-spacing: -0.025em; line-height: 1.05;
+      margin-bottom: 0.35rem;
+      color: var(--cream);
+      position: relative;
+    }
+    .form-sub {
+      font-size: 0.88rem; font-weight: 300;
+      color: rgba(245,240,232,0.48);
+      line-height: 1.6; margin-bottom: 1.75rem;
+    }
+
+    /* TAB SWITCH */
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: rgba(8,12,8,0.6);
+      border: 1px solid rgba(70,196,85,0.1);
+      border-radius: 10px; padding: 4px; gap: 4px;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .tab {
+      padding: 0.7rem 1rem;
+      font-size: 0.75rem; letter-spacing: 0.1em;
+      font-weight: 600; text-transform: uppercase;
+      color: rgba(245,240,232,0.45);
+      background: transparent; border: none;
+      border-radius: 7px; cursor: none;
+      transition: color .25s, background .3s;
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+    .tab.active {
+      color: var(--black);
+      background: linear-gradient(135deg, var(--g5), var(--g4));
+      box-shadow: 0 4px 16px rgba(70,196,85,0.3);
+    }
+
+    /* FORMS */
+    .grid-form {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+    }
+    .full-width { grid-column: span 2; }
+
+    .field {
+      position: relative;
+      grid-column: span 1;
+    }
+    .field.full { grid-column: span 2; }
+    .field label {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.4);
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+    .field label .req { color: var(--gold); margin-left: 2px; }
+
+    input {
+      width: 100%;
+      background: rgba(8,12,8,0.5);
+      border: 1px solid rgba(70,196,85,0.12);
+      color: var(--cream);
+      padding: 0.78rem 0.95rem;
+      border-radius: 10px;
+      outline: none;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.9rem;
+      letter-spacing: 0.01em;
+      transition: border-color .25s, background .25s, box-shadow .25s, transform .2s;
+    }
+    input::placeholder { color: rgba(245,240,232,0.25); }
+    input:hover { border-color: rgba(70,196,85,0.22); }
+    input:focus {
+      border-color: var(--g5);
+      background: rgba(70,196,85,0.05);
+      box-shadow: 0 0 0 3px rgba(70,196,85,0.08);
+    }
+
+    /* BUTTON */
+    .submit-btn {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 0.95rem 1.1rem;
+      border-radius: 12px;
+      border: none;
+      cursor: none;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--black);
+      background: linear-gradient(135deg, var(--g5), var(--g4));
+      position: relative;
+      overflow: hidden;
+      transition: transform .25s ease, box-shadow .25s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .submit-btn .arr {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(8,12,8,0.18);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; transition: transform .3s;
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(70,196,85,0.28);
+    }
+    .submit-btn:hover .arr { transform: rotate(45deg); }
+    .submit-btn::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(245,240,232,0.25), transparent);
+      transform: translateX(-120%);
+      transition: transform .7s;
+    }
+    .submit-btn:hover::before { transform: translateX(120%); }
+
+    .toggle-link {
+      margin-top: 1.1rem;
+      text-align: center;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      color: rgba(245,240,232,0.5);
+      cursor: none;
+    }
+    .toggle-link b {
+      color: var(--g5);
+      font-weight: 600;
+      border-bottom: 1px dashed rgba(70,196,85,0.4);
+      padding-bottom: 1px;
+      transition: color .2s, border-color .2s;
+    }
+    .toggle-link:hover b { color: var(--gold); border-color: var(--gold); }
+
+    .card-footline {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 1.25rem; padding-top: 1.1rem;
+      border-top: 1px solid rgba(70,196,85,0.08);
+      font-size: 0.68rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(245,240,232,0.28);
+    }
+    .card-footline .secure {
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .card-footline .secure::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--g5); box-shadow: 0 0 6px var(--g5);
+    }
+
+    /* LOADER */
+    #loaderOverlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(8,12,8,0.92);
+      backdrop-filter: blur(10px);
+      z-index: 20000;
+      flex-direction: column; justify-content: center; align-items: center;
+      color: var(--g5);
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+    .loader-circle {
+      width: 64px; height: 64px;
+      border: 3px solid rgba(70,196,85,0.12);
+      border-left-color: var(--g5);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loaderText {
+      margin-top: 22px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+    }
+
+    /* FOOTER */
+    .footer {
+      position: relative; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.3rem 3.5rem;
+      border-top: 1px solid rgba(70,196,85,0.07);
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 800;
+      letter-spacing: -0.02em;
+      color: rgba(245,240,232,0.3);
+    }
+    .footer-copy { font-size: 0.72rem; color: rgba(245,240,232,0.2); letter-spacing: 0.06em; }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-link {
+      font-size: 0.72rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: rgba(245,240,232,0.2);
+      text-decoration: none; transition: color .2s;
+    }
+    .footer-link:hover { color: var(--g5); }
+
+    /* RESPONSIVE */
+    @media (max-width: 1000px) {
+      body { cursor: auto; }
+      .cursor-dot, .cursor-ring { display: none; }
+      .navbar { padding: 1.2rem 1.5rem; }
+      .auth-shell { grid-template-columns: 1fr; padding: 1.5rem; gap: 2rem; }
+      .auth-left { padding: 0; }
+      .info-grid, .marquee-wrap { max-width: 100%; }
+      .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
+    }
+    @media (max-width: 560px) {
+      .grid-form { grid-template-columns: 1fr; }
+      .field, .full-width { grid-column: span 1; }
+      .auth-card { padding: 1.5rem 1.25rem; }
+      .form-title { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Canvas bg -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Grain -->
+<div class="grain"></div>
+
+<!-- Loader (IDs preserved for existing script.js) -->
+<div id="loaderOverlay">
+  <div class="loader-circle"></div>
+  <div id="loaderText">Initializing AI Soil Scan...</div>
+  <p style="color:rgba(245,240,232,0.35); font-size:.75rem; margin-top:10px; letter-spacing:.08em;">
+    Connecting to regional agri-satellites...
+  </p>
+</div>
+
+<!-- NAV -->
+<nav class="navbar">
+  <a href="/" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(46,140,56,0.25)" stroke="#46c455" stroke-width="1"/>
+        <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(70,196,85,0.15)"/>
+        <line x1="17" y1="28" x2="17" y2="6" stroke="#46c455" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <path d="M17 16 C20 12 24 14 26 18" stroke="#8de898" stroke-width="0.8" fill="none"/>
+        <path d="M17 20 C14 16 10 18 8 22" stroke="#8de898" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    Nutri-Farm<span class="logo-ai">AI</span>
+  </a>
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      <span id="navStatusText">System Active · Secure</span>
+    </div>
+    <select id="loginLangSelect" onchange="changeLanguage(this.value)" class="lang-dropdown">
+      <option value="en">English</option>
+      <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="bn">বাংলা (Bengali)</option>
+      <option value="te">తెలుగు (Telugu)</option>
+      <option value="ta">தமிழ் (Tamil)</option>
+      <option value="mr">मराठी (Marathi)</option>
+      <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      <option value="gu">ગુજરાતી (Gujarati)</option>
+      <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+    </select>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="auth-shell">
+
+  <!-- LEFT -->
+  <div class="auth-left">
+    <div class="badge">
+      <div class="badge-pulse"></div>
+      <span id="heroBadge">Farmer Portal · Live Access</span>
+    </div>
+    <h1>
+      <span class="l1" id="heroLine1">Sow Data.</span>
+      <span class="l2" id="heroLine2">Grow Smarter.</span>
+    </h1>
+    <p class="auth-tagline" id="greetingText">
+      Join thousands of farmers using Nutri-FarmAI for precision soil analytics, climate-smart advisory, and harvest intelligence — all in your own language.
+    </p>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="ic-num">01</div>
+        <div class="ic-title" id="infoTitle1">Soil Intelligence</div>
+        <div class="ic-sub"  id="infoSub1">AI-powered scans for nutrients, pH &amp; moisture.</div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-num">02</div>
+        <div class="ic-title" id="infoTitle2">Climate Advisory</div>
+        <div class="ic-sub"  id="infoSub2">Region-aware crop &amp; weather recommendations.</div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-num">03</div>
+        <div class="ic-title" id="infoTitle3">Yield Forecast</div>
+        <div class="ic-sub"  id="infoSub3">Predictive models for better harvest planning.</div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-num">04</div>
+        <div class="ic-title" id="infoTitle4">9+ Languages</div>
+        <div class="ic-sub"  id="infoSub4">Use the platform in your native language.</div>
+      </div>
+    </div>
+
+    <div class="marquee-wrap">
+      <div class="marquee-track">
+        <div class="marquee-item"><span class="dot"></span> Soil Scan</div>
+        <div class="marquee-item"><span class="dot"></span> Precision Agri</div>
+        <div class="marquee-item"><span class="dot"></span> Crop Advisory</div>
+        <div class="marquee-item"><span class="dot"></span> Weather AI</div>
+        <div class="marquee-item"><span class="dot"></span> Rural Empowerment</div>
+        <div class="marquee-item"><span class="dot"></span> Harvest Forecast</div>
+        <div class="marquee-item"><span class="dot"></span> Soil Scan</div>
+        <div class="marquee-item"><span class="dot"></span> Precision Agri</div>
+        <div class="marquee-item"><span class="dot"></span> Crop Advisory</div>
+        <div class="marquee-item"><span class="dot"></span> Weather AI</div>
+        <div class="marquee-item"><span class="dot"></span> Rural Empowerment</div>
+        <div class="marquee-item"><span class="dot"></span> Harvest Forecast</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="card-top">
+        <div class="card-chip">
+          <div class="mini-dot"></div>
+          <span id="chipText">Secure · Encrypted</span>
+        </div>
+        <div class="card-num">01 / FARMER</div>
+      </div>
+
+      <h2 class="form-title" id="formTitle">Farmer Login</h2>
+      <p class="form-sub" id="formSub">Welcome back. Sign in to access your AI farm dashboard.</p>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab" id="tabRegister" onclick="toggleView(false)">Register</button>
+        <button type="button" class="tab active" id="tabLogin" onclick="toggleView(true)">Login</button>
+      </div>
+
+      <!-- REGISTER -->
+      <form id="regForm" onsubmit="handleFarmerSubmit(event)" style="display:none">
+        <div class="grid-form" id="regFields">
+          <div class="field full">
+            <label id="lblName">Full Name <span class="req">*</span></label>
+            <input type="text" id="fName" placeholder="e.g. Ramesh Kumar" required>
+          </div>
+          <div class="field">
+            <label id="lblAge">Age <span class="req">*</span></label>
+            <input type="number" id="fAge" placeholder="e.g. 42" required>
+          </div>
+          <div class="field">
+            <label id="lblState">State <span class="req">*</span></label>
+            <input type="text" id="fState" placeholder="e.g. Odisha" required>
+          </div>
+          <div class="field">
+            <label id="lblCity">City / District <span class="req">*</span></label>
+            <input type="text" id="fCity" placeholder="District" required>
+          </div>
+          <div class="field">
+            <label id="lblVillage">Village <span class="req">*</span></label>
+            <input type="text" id="fVillage" placeholder="Village" required>
+          </div>
+          <div class="field full">
+            <label id="lblPhone">Phone Number <span class="req">*</span></label>
+            <input type="text" id="fPhone" placeholder="10-digit mobile" required>
+          </div>
+          <div class="field full">
+            <label id="lblPass">Password <span class="req">*</span></label>
+            <input type="password" id="fPass" placeholder="Create a strong password" required>
+          </div>
+        </div>
+        <button type="submit" id="regSendBtn" class="submit-btn">
+          <span id="regBtnText">Create Account &amp; Register</span>
+          <span class="arr">→</span>
+        </button>
+        <div class="toggle-link" onclick="toggleView(true)">
+          <span id="toLoginTxt">Already have an account?</span> <b>Login here</b>
+        </div>
+      </form>
+
+      <!-- LOGIN -->
+      <form id="loginForm" onsubmit="handlePhoneLogin(event)">
+        <div class="grid-form" id="loginFields">
+          <div class="field full">
+            <label id="lblLoginPhone">Phone Number <span class="req">*</span></label>
+            <input type="text" id="loginPhone" placeholder="Registered phone number" required>
+          </div>
+          <div class="field full">
+            <label id="lblLoginPass">Password <span class="req">*</span></label>
+            <input type="password" id="loginPass" placeholder="Your password" required>
+          </div>
+        </div>
+        <button type="submit" id="loginSendBtn" class="submit-btn">
+          <span id="loginBtnText">Login to Dashboard</span>
+          <span class="arr">→</span>
+        </button>
+        <div class="toggle-link" onclick="toggleView(false)">
+          <span id="toRegTxt">New Farmer?</span> <b>Create Account here</b>
+        </div>
+      </form>
+
+      <div class="card-footline">
+        <div class="secure" id="secureText">End-to-end Encrypted</div>
+        <div id="aiReadyText">AI Ready</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+  <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Support</a>
+  </div>
+</footer>
+
+<!-- Supabase + your existing external script preserved -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+
+<script>
+/* ── Custom cursor ── */
+const dot  = document.getElementById('cursorDot');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+(function loop(){
+  rx += (mx - rx) * 0.14;
+  ry += (my - ry) * 0.14;
+  dot.style.left  = mx + 'px';  dot.style.top  = my + 'px';
+  ring.style.left = rx + 'px';  ring.style.top = ry + 'px';
+  requestAnimationFrame(loop);
+})();
+
+/* ── Canvas particle network ── */
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+class Particle {
+  constructor(){ this.reset(); }
+  reset(){
+    this.x = Math.random()*W; this.y = Math.random()*H;
+    this.vx = (Math.random()-0.5)*0.32;
+    this.vy = (Math.random()-0.5)*0.32;
+    this.r = Math.random()*1.8 + 0.4;
+    this.a = Math.random()*0.5 + 0.1;
+    this.life = 0; this.maxLife = Math.random()*400 + 200;
+  }
+  update(){
+    this.x += this.vx; this.y += this.vy; this.life++;
+    if (this.x<0||this.x>W||this.y<0||this.y>H||this.life>this.maxLife) this.reset();
+  }
+  draw(){
+    const fade = Math.min(this.life/40,1) * Math.min((this.maxLife-this.life)/40,1);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(70,196,85,${this.a*fade})`;
+    ctx.fill();
+  }
+}
+for (let i=0;i<110;i++) particles.push(new Particle());
+
+function drawLines(){
+  for (let i=0;i<particles.length;i++){
+    for (let j=i+1;j<particles.length;j++){
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d  = Math.sqrt(dx*dx+dy*dy);
+      if (d<100){
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(46,140,56,${0.12*(1 - d/100)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+function animCanvas(){
+  ctx.clearRect(0,0,W,H);
+  const grd = ctx.createRadialGradient(W*0.5, H*0.35, 0, W*0.5, H*0.35, H*0.8);
+  grd.addColorStop(0,   'rgba(26,90,32,0.07)');
+  grd.addColorStop(0.5, 'rgba(15,32,16,0.03)');
+  grd.addColorStop(1,   'rgba(8,12,8,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0,0,W,H);
+  drawLines();
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animCanvas);
+}
+animCanvas();
+
+/* ── Toggle (same API as original inline onclicks) ── */
+function toggleView(showLogin) {
+  const reg   = document.getElementById('regForm');
+  const login = document.getElementById('loginForm');
+  const title = document.getElementById('formTitle');
+  const sub   = document.getElementById('formSub');
+  const tabR  = document.getElementById('tabRegister');
+  const tabL  = document.getElementById('tabLogin');
+
+  reg.style.display   = showLogin ? 'none' : 'block';
+  login.style.display = showLogin ? 'block' : 'none';
+  title.innerText = showLogin
+    ? (window.__i18n?.loginTitle || 'Farmer Login')
+    : (window.__i18n?.regTitle   || 'Farmer Registration');
+  sub.innerText = showLogin
+    ? (window.__i18n?.loginSub || 'Welcome back. Sign in to access your AI farm dashboard.')
+    : (window.__i18n?.regSub   || 'Create your account to unlock AI-driven soil & crop intelligence.');
+
+  tabL.classList.toggle('active', showLogin);
+  tabR.classList.toggle('active', !showLogin);
+}
+toggleView(true); // default to Login
+
+/* ── i18n for visual labels (your Supabase script's changeLanguage still runs) ── */
+const i18n = {
+  en: { badge:'Farmer Portal · Live Access', line1:'Sow Data.', line2:'Grow Smarter.',
+    tagline:'Join thousands of farmers using Nutri-FarmAI for precision soil analytics, climate-smart advisory, and harvest intelligence — all in your own language.',
+    regTitle:'Farmer Registration', regSub:'Create your account to unlock AI-driven soil & crop intelligence.',
+    loginTitle:'Farmer Login', loginSub:'Welcome back. Sign in to access your AI farm dashboard.',
+    chip:'Secure · Encrypted', navStatus:'System Active · Secure',
+    name:'Full Name', age:'Age', state:'State', city:'City / District', village:'Village', phone:'Phone Number', pass:'Password',
+    loginPhone:'Phone Number', loginPass:'Password',
+    regBtn:'Create Account & Register', loginBtn:'Login to Dashboard',
+    toLogin:'Already have an account?', toReg:'New Farmer?',
+    secure:'End-to-end Encrypted', aiReady:'AI Ready',
+    t1:'Soil Intelligence', s1:'AI-powered scans for nutrients, pH & moisture.',
+    t2:'Climate Advisory',  s2:'Region-aware crop & weather recommendations.',
+    t3:'Yield Forecast',    s3:'Predictive models for better harvest planning.',
+    t4:'9+ Languages',      s4:'Use the platform in your native language.' },
+  or: { badge:'କୃଷକ ପୋର୍ଟାଲ · ଲାଇଭ୍ ଆକ୍ସେସ୍', line1:'ଡାଟା ବୁଣ।', line2:'ସ୍ମାର୍ଟ ଭାବେ ବଢ଼।',
+    tagline:'ନ୍ୟୁଟ୍ରି-ଫାର୍ମAI ସହିତ ମାଟି ବିଶ୍ଳେଷଣ, ଜଳବାୟୁ ପରାମର୍ଶ ଓ ଅମଳ ପୂର୍ବାନୁମାନ — ଆପଣଙ୍କ ନିଜ ଭାଷାରେ।',
+    regTitle:'କୃଷକ ପଞ୍ଜିକରଣ', regSub:'ଆପଣଙ୍କ ଖାତା ତିଆରି କରି AI ଚାଳିତ ମାଟି ଓ ଫସଲ ଜ୍ଞାନ ଖୋଲନ୍ତୁ।',
+    loginTitle:'କୃଷକ ଲଗଇନ', loginSub:'ସ୍ୱାଗତ। ଆପଣଙ୍କ AI ଡ୍ୟାଶବୋର୍ଡ ପାଇଁ ସାଇନ୍ ଇନ୍ କରନ୍ତୁ।',
+    chip:'ସୁରକ୍ଷିତ · ଏନ୍କ୍ରିପ୍ଟେଡ୍', navStatus:'ସିଷ୍ଟମ୍ ସକ୍ରିୟ',
+    name:'ପୂର୍ଣ୍ଣ ନାମ', age:'ବୟସ', state:'ରାଜ୍ୟ', city:'ସହର / ଜିଲ୍ଲା', village:'ଗାଁ', phone:'ଫୋନ ନମ୍ବର', pass:'ପାସୱାର୍ଡ',
+    loginPhone:'ଫୋନ ନମ୍ବର', loginPass:'ପାସୱାର୍ଡ',
+    regBtn:'ଖାତା ତିଆରି କରନ୍ତୁ', loginBtn:'ଡ୍ୟାଶବୋର୍ଡକୁ ଲଗଇନ୍',
+    toLogin:'ପୂର୍ବରୁ ଖାତା ଅଛି?', toReg:'ନୂଆ କୃଷକ?',
+    secure:'ଏଣ୍ଡ-ଟୁ-ଏଣ୍ଡ ଏନ୍କ୍ରିପ୍ଟେଡ୍', aiReady:'AI ପ୍ରସ୍ତୁତ',
+    t1:'ମାଟି ଇଣ୍ଟେଲିଜେନ୍ସ', s1:'ପୋଷକ, pH ଓ ଆର୍ଦ୍ରତା ପାଇଁ AI ସ୍କାନ।',
+    t2:'ଜଳବାୟୁ ପରାମର୍ଶ', s2:'ଆଞ୍ଚଳିକ ଫସଲ ଏବଂ ପାଣିପାଗ ସୁପାରିଶ।',
+    t3:'ଅମଳ ପୂର୍ବାନୁମାନ', s3:'ଉନ୍ନତ ଅମଳ ଯୋଜନା ପାଇଁ AI ମଡେଲ।',
+    t4:'୯+ ଭାଷା', s4:'ଆପଣଙ୍କ ନିଜ ଭାଷାରେ ବ୍ୟବହାର କରନ୍ତୁ।' },
+  hi: { badge:'किसान पोर्टल · लाइव एक्सेस', line1:'डेटा बोओ।', line2:'स्मार्ट उगाओ।',
+    tagline:'न्यूट्री-फार्मAI के साथ मृदा विश्लेषण, जलवायु सलाह और फसल पूर्वानुमान — आपकी अपनी भाषा में।',
+    regTitle:'किसान पंजीकरण', regSub:'AI-चालित मृदा एवं फसल बुद्धिमत्ता पाने के लिए खाता बनाएं।',
+    loginTitle:'किसान लॉगिन', loginSub:'वापसी पर स्वागत है। अपने AI डैशबोर्ड में साइन इन करें।',
+    chip:'सुरक्षित · एन्क्रिप्टेड', navStatus:'सिस्टम सक्रिय',
+    name:'पूरा नाम', age:'उम्र', state:'राज्य', city:'शहर / जिला', village:'गाँव', phone:'फ़ोन नंबर', pass:'पासवर्ड',
+    loginPhone:'फ़ोन नंबर', loginPass:'पासवर्ड',
+    regBtn:'खाता बनाएँ और पंजीकरण करें', loginBtn:'डैशबोर्ड में लॉगिन',
+    toLogin:'पहले से खाता है?', toReg:'नए किसान?',
+    secure:'एंड-टू-एंड एन्क्रिप्टेड', aiReady:'AI तैयार',
+    t1:'मृदा बुद्धिमत्ता', s1:'पोषक, pH और नमी के लिए AI स्कैन।',
+    t2:'जलवायु सलाह',     s2:'क्षेत्रीय फ़सल और मौसम अनुशंसाएँ।',
+    t3:'उपज पूर्वानुमान',  s3:'बेहतर फ़सल योजना के लिए AI मॉडल।',
+    t4:'9+ भाषाएँ',      s4:'अपनी भाषा में उपयोग करें।' },
+  bn: { badge:'কৃষক পোর্টাল · লাইভ অ্যাক্সেস', line1:'ডেটা বুনুন।', line2:'স্মার্ট চাষ করুন।',
+    tagline:'নিউট্রি-ফার্মAI দিয়ে মাটি বিশ্লেষণ, জলবায়ু পরামর্শ ও ফসল পূর্বাভাস — আপনার নিজের ভাষায়।',
+    regTitle:'কৃষক নিবন্ধন', regSub:'AI-চালিত মাটি ও ফসল বুদ্ধিমত্তা পেতে অ্যাকাউন্ট তৈরি করুন।',
+    loginTitle:'কৃষক লগইন', loginSub:'স্বাগতম। আপনার AI ড্যাশবোর্ডে সাইন ইন করুন।',
+    chip:'সুরক্ষিত · এনক্রিপ্টেড', navStatus:'সিস্টেম সক্রিয়',
+    name:'পুরো নাম', age:'বয়স', state:'রাজ্য', city:'শহর / জেলা', village:'গ্রাম', phone:'ফোন নম্বর', pass:'পাসওয়ার্ড',
+    loginPhone:'ফোন নম্বর', loginPass:'পাসওয়ার্ড',
+    regBtn:'অ্যাকাউন্ট তৈরি করুন', loginBtn:'ড্যাশবোর্ডে লগইন',
+    toLogin:'ইতিমধ্যে অ্যাকাউন্ট আছে?', toReg:'নতুন কৃষক?',
+    secure:'এন্ড-টু-এন্ড এনক্রিপ্টেড', aiReady:'AI প্রস্তুত',
+    t1:'মাটি বুদ্ধিমত্তা', s1:'পুষ্টি, pH ও আর্দ্রতার AI স্ক্যান।',
+    t2:'জলবায়ু পরামর্শ',  s2:'আঞ্চলিক ফসল ও আবহাওয়া সুপারিশ।',
+    t3:'ফলন পূর্বাভাস',   s3:'উন্নত ফসল পরিকল্পনার জন্য AI মডেল।',
+    t4:'৯+ ভাষা',        s4:'আপনার ভাষায় ব্যবহার করুন।' },
+  te: { badge:'రైతు పోర్టల్ · లైవ్ యాక్సెస్', line1:'డేటా విత్తండి.', line2:'స్మార్ట్ పెంచండి.',
+    tagline:'న్యూట్రి-ఫామ్AIతో నేల విశ్లేషణ, వాతావరణ సలహా & దిగుబడి అంచనా — మీ భాషలో.',
+    regTitle:'రైతు నమోదు', regSub:'AI ఆధారిత నేల & పంట సమాచారానికి ఖాతా సృష్టించండి.',
+    loginTitle:'రైతు లాగిన్', loginSub:'తిరిగి స్వాగతం. మీ AI డాష్‌బోర్డ్‌కు సైన్ ఇన్ చేయండి.',
+    chip:'సురక్షితం · ఎన్క్రిప్టెడ్', navStatus:'సిస్టమ్ యాక్టివ్',
+    name:'పూర్తి పేరు', age:'వయస్సు', state:'రాష్ట్రం', city:'నగరం / జిల్లా', village:'గ్రామం', phone:'ఫోన్ నంబర్', pass:'పాస్‌వర్డ్',
+    loginPhone:'ఫోన్ నంబర్', loginPass:'పాస్‌వర్డ్',
+    regBtn:'ఖాతా సృష్టించండి', loginBtn:'డాష్‌బోర్డ్‌కు లాగిన్',
+    toLogin:'ఇప్పటికే ఖాతా ఉందా?', toReg:'కొత్త రైతు?',
+    secure:'ఎండ్-టు-ఎండ్ ఎన్క్రిప్టెడ్', aiReady:'AI సిద్ధం',
+    t1:'నేల మేధస్సు', s1:'పోషకాలు, pH & తేమ కోసం AI స్కాన్.',
+    t2:'వాతావరణ సలహా', s2:'ప్రాంతీయ పంట & వాతావరణ సూచనలు.',
+    t3:'దిగుబడి అంచనా', s3:'మెరుగైన పంట ప్రణాళికకు AI నమూనాలు.',
+    t4:'9+ భాషలు', s4:'మీ స్వంత భాషలో వాడండి.' },
+  ta: { badge:'விவசாயி போர்டல் · நேரடி அணுகல்', line1:'தரவை விதைக்கவும்.', line2:'புத்திசாலியாக வளர்க்கவும்.',
+    tagline:'Nutri-FarmAI உடன் மண் பகுப்பாய்வு, காலநிலை ஆலோசனை & அறுவடை கணிப்பு — உங்கள் மொழியில்.',
+    regTitle:'விவசாயி பதிவு', regSub:'AI சார்ந்த மண் & பயிர் நுண்ணறிவுக்கு கணக்கை உருவாக்கவும்.',
+    loginTitle:'விவசாயி உள்நுழைவு', loginSub:'மீண்டும் வரவேற்கிறோம். உங்கள் AI டாஷ்போர்டில் உள்நுழையவும்.',
+    chip:'பாதுகாப்பு · குறியாக்கம்', navStatus:'சிஸ்டம் செயலில்',
+    name:'முழு பெயர்', age:'வயது', state:'மாநிலம்', city:'நகரம் / மாவட்டம்', village:'கிராமம்', phone:'தொலைபேசி எண்', pass:'கடவுச்சொல்',
+    loginPhone:'தொலைபேசி எண்', loginPass:'கடவுச்சொல்',
+    regBtn:'கணக்கை உருவாக்கு', loginBtn:'டாஷ்போர்டுக்கு உள்நுழை',
+    toLogin:'ஏற்கனவே கணக்கு உள்ளதா?', toReg:'புதிய விவசாயியா?',
+    secure:'முழுமையான குறியாக்கம்', aiReady:'AI தயார்',
+    t1:'மண் அறிவு', s1:'ஊட்டச்சத்து, pH & ஈரப்பதத்திற்கான AI ஸ்கேன்.',
+    t2:'காலநிலை ஆலோசனை', s2:'பிராந்திய பயிர் & வானிலை பரிந்துரைகள்.',
+    t3:'விளைச்சல் முன்னறிவிப்பு', s3:'சிறந்த அறுவடை திட்டமிடலுக்கு AI.',
+    t4:'9+ மொழிகள்', s4:'உங்கள் சொந்த மொழியில் பயன்படுத்தவும்.' },
+  mr: { badge:'शेतकरी पोर्टल · थेट प्रवेश', line1:'डेटा पेरा.', line2:'हुशारीने वाढा.',
+    tagline:'Nutri-FarmAI सोबत माती विश्लेषण, हवामान सल्ला व पीक अंदाज — आपल्या भाषेत.',
+    regTitle:'शेतकरी नोंदणी', regSub:'AI-आधारित माती व पीक बुद्धिमत्तेसाठी खाते तयार करा.',
+    loginTitle:'शेतकरी लॉगिन', loginSub:'पुन्हा स्वागत. आपल्या AI डॅशबोर्डमध्ये साइन इन करा.',
+    chip:'सुरक्षित · एन्क्रिप्टेड', navStatus:'सिस्टम सक्रिय',
+    name:'पूर्ण नाव', age:'वय', state:'राज्य', city:'शहर / जिल्हा', village:'गाव', phone:'फोन नंबर', pass:'पासवर्ड',
+    loginPhone:'फोन नंबर', loginPass:'पासवर्ड',
+    regBtn:'खाते तयार करा', loginBtn:'डॅशबोर्डमध्ये लॉगिन',
+    toLogin:'आधीच खाते आहे?', toReg:'नवीन शेतकरी?',
+    secure:'एंड-टू-एंड एन्क्रिप्टेड', aiReady:'AI तयार',
+    t1:'माती बुद्धिमत्ता', s1:'पोषक, pH व आर्द्रतेसाठी AI स्कॅन.',
+    t2:'हवामान सल्ला', s2:'प्रादेशिक पीक व हवामान शिफारसी.',
+    t3:'उत्पन्न अंदाज', s3:'चांगल्या पीक नियोजनासाठी AI मॉडेल.',
+    t4:'9+ भाषा', s4:'आपल्या भाषेत वापरा.' },
+  kn: { badge:'ರೈತ ಪೋರ್ಟಲ್ · ಲೈವ್ ಪ್ರವೇಶ', line1:'ಡೇಟಾ ಬಿತ್ತಿ.', line2:'ಸ್ಮಾರ್ಟ್ ಬೆಳೆಸಿ.',
+    tagline:'Nutri-FarmAI ನೊಂದಿಗೆ ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ, ಹವಾಮಾನ ಸಲಹೆ ಮತ್ತು ಇಳುವರಿ ಮುನ್ಸೂಚನೆ — ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ.',
+    regTitle:'ರೈತ ನೋಂದಣಿ', regSub:'AI ಆಧಾರಿತ ಮಣ್ಣು ಮತ್ತು ಬೆಳೆ ಒಳನೋಟಕ್ಕಾಗಿ ಖಾತೆಯನ್ನು ರಚಿಸಿ.',
+    loginTitle:'ರೈತ ಲಾಗಿನ್', loginSub:'ಮರಳಿ ಸ್ವಾಗತ. ನಿಮ್ಮ AI ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಸೈನ್ ಇನ್ ಮಾಡಿ.',
+    chip:'ಸುರಕ್ಷಿತ · ಎನ್‌ಕ್ರಿಪ್ಟೆಡ್', navStatus:'ಸಿಸ್ಟಮ್ ಸಕ್ರಿಯ',
+    name:'ಪೂರ್ಣ ಹೆಸರು', age:'ವಯಸ್ಸು', state:'ರಾಜ್ಯ', city:'ನಗರ / ಜಿಲ್ಲೆ', village:'ಗ್ರಾಮ', phone:'ಫೋನ್ ಸಂಖ್ಯೆ', pass:'ಪಾಸ್ವರ್ಡ್',
+    loginPhone:'ಫೋನ್ ಸಂಖ್ಯೆ', loginPass:'ಪಾಸ್ವರ್ಡ್',
+    regBtn:'ಖಾತೆ ರಚಿಸಿ', loginBtn:'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಲಾಗಿನ್',
+    toLogin:'ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ?', toReg:'ಹೊಸ ರೈತರೇ?',
+    secure:'ಎಂಡ್-ಟು-ಎಂಡ್ ಎನ್‌ಕ್ರಿಪ್ಟೆಡ್', aiReady:'AI ಸಿದ್ಧ',
+    t1:'ಮಣ್ಣು ಬುದ್ಧಿಮತ್ತೆ', s1:'ಪೋಷಕಾಂಶ, pH ಮತ್ತು ತೇವಾಂಶಕ್ಕಾಗಿ AI ಸ್ಕ್ಯಾನ್.',
+    t2:'ಹವಾಮಾನ ಸಲಹೆ', s2:'ಪ್ರಾದೇಶಿಕ ಬೆಳೆ ಮತ್ತು ಹವಾಮಾನ ಶಿಫಾರಸುಗಳು.',
+    t3:'ಇಳುವರಿ ಮುನ್ಸೂಚನೆ', s3:'ಉತ್ತಮ ಬೆಳೆ ಯೋಜನೆಗಾಗಿ AI ಮಾದರಿಗಳು.',
+    t4:'9+ ಭಾಷೆಗಳು', s4:'ನಿಮ್ಮ ಸ್ವಂತ ಭಾಷೆಯಲ್ಲಿ ಬಳಸಿ.' },
+  gu: { badge:'ખેડૂત પોર્ટલ · લાઈવ એક્સેસ', line1:'ડેટા વાવો.', line2:'સ્માર્ટ ઉગાડો.',
+    tagline:'Nutri-FarmAI સાથે માટી વિશ્લેષણ, આબોહવા સલાહ અને ઉપજ અંદાજ — તમારી ભાષામાં.',
+    regTitle:'ખેડૂત નોંધણી', regSub:'AI-સંચાલિત માટી અને પાક સમજણ માટે ખાતું બનાવો.',
+    loginTitle:'ખેડૂત લોગિન', loginSub:'ફરી સ્વાગત. તમારા AI ડેશબોર્ડમાં સાઇન ઇન કરો.',
+    chip:'સુરક્ષિત · એન્ક્રિપ્ટેડ', navStatus:'સિસ્ટમ સક્રિય',
+    name:'પૂરું નામ', age:'ઉંમર', state:'રાજ્ય', city:'શહેર / જિલ્લો', village:'ગામ', phone:'ફોન નંબર', pass:'પાસવર્ડ',
+    loginPhone:'ફોન નંબર', loginPass:'પાસવર્ડ',
+    regBtn:'ખાતું બનાવો', loginBtn:'ડેશબોર્ડમાં લોગિન',
+    toLogin:'પહેલેથી ખાતું છે?', toReg:'નવા ખેડૂત?',
+    secure:'એન્ડ-ટુ-એન્ડ એન્ક્રિપ્ટેડ', aiReady:'AI તૈયાર',
+    t1:'માટી બુદ્ધિ', s1:'પોષક, pH અને ભેજ માટે AI સ્કેન.',
+    t2:'આબોહવા સલાહ', s2:'પ્રાદેશિક પાક અને હવામાન ભલામણો.',
+    t3:'ઉપજ અંદાજ', s3:'સારા પાક આયોજન માટે AI મોડેલો.',
+    t4:'9+ ભાષાઓ', s4:'તમારી પોતાની ભાષામાં વાપરો.' },
+  pa: { badge:'ਕਿਸਾਨ ਪੋਰਟਲ · ਲਾਈਵ ਐਕਸੈੱਸ', line1:'ਡਾਟਾ ਬੀਜੋ.', line2:'ਸਮਾਰਟ ਉਗਾਓ.',
+    tagline:'Nutri-FarmAI ਨਾਲ ਮਿੱਟੀ ਵਿਸ਼ਲੇਸ਼ਣ, ਮੌਸਮ ਸਲਾਹ ਤੇ ਫ਼ਸਲ ਅੰਦਾਜ਼ਾ — ਤੁਹਾਡੀ ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ.',
+    regTitle:'ਕਿਸਾਨ ਰਜਿਸਟ੍ਰੇਸ਼ਨ', regSub:'AI-ਚਾਲਿਤ ਮਿੱਟੀ ਅਤੇ ਫ਼ਸਲ ਸਮਝ ਲਈ ਖਾਤਾ ਬਣਾਓ.',
+    loginTitle:'ਕਿਸਾਨ ਲੌਗਿਨ', loginSub:'ਮੁੜ ਜੀ ਆਇਆਂ ਨੂੰ. ਆਪਣੇ AI ਡੈਸ਼ਬੋਰਡ ਤੇ ਸਾਈਨ ਇਨ ਕਰੋ.',
+    chip:'ਸੁਰੱਖਿਅਤ · ਐਨਕ੍ਰਿਪਟਿਡ', navStatus:'ਸਿਸਟਮ ਸਰਗਰਮ',
+    name:'ਪੂਰਾ ਨਾਂ', age:'ਉਮਰ', state:'ਰਾਜ', city:'ਸ਼ਹਿਰ / ਜ਼ਿਲ੍ਹਾ', village:'ਪਿੰਡ', phone:'ਫ਼ੋਨ ਨੰਬਰ', pass:'ਪਾਸਵਰਡ',
+    loginPhone:'ਫ਼ੋਨ ਨੰਬਰ', loginPass:'ਪਾਸਵਰਡ',
+    regBtn:'ਖਾਤਾ ਬਣਾਓ', loginBtn:'ਡੈਸ਼ਬੋਰਡ ਤੇ ਲੌਗਿਨ',
+    toLogin:'ਪਹਿਲਾਂ ਹੀ ਖਾਤਾ ਹੈ?', toReg:'ਨਵੇਂ ਕਿਸਾਨ?',
+    secure:'ਐਂਡ-ਟੂ-ਐਂਡ ਐਨਕ੍ਰਿਪਟਿਡ', aiReady:'AI ਤਿਆਰ',
+    t1:'ਮਿੱਟੀ ਬੁੱਧੀ', s1:'ਪੋਸ਼ਕ, pH ਤੇ ਨਮੀ ਲਈ AI ਸਕੈਨ.',
+    t2:'ਮੌਸਮ ਸਲਾਹ', s2:'ਖੇਤਰੀ ਫ਼ਸਲ ਤੇ ਮੌਸਮ ਸਿਫ਼ਾਰਸ਼ਾਂ.',
+    t3:'ਉਪਜ ਅੰਦਾਜ਼ਾ', s3:'ਵਧੀਆ ਫ਼ਸਲ ਯੋਜਨਾ ਲਈ AI ਮਾਡਲ.',
+    t4:'9+ ਭਾਸ਼ਾਵਾਂ', s4:'ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਵਰਤੋਂ ਕਰੋ.' }
+};
+
+/* If your script.js already defines changeLanguage, we wrap it so both run */
+const __originalChangeLanguage = (typeof window.changeLanguage === 'function') ? window.changeLanguage : null;
+
+window.changeLanguage = function(lang) {
+  const d = i18n[lang] || i18n.en;
+  window.__i18n = d;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && typeof v === 'string') el.textContent = v; };
+  set('heroBadge', d.badge); set('heroLine1', d.line1); set('heroLine2', d.line2);
+  set('greetingText', d.tagline); set('chipText', d.chip); set('navStatusText', d.navStatus);
+  set('lblName',  d.name + ' *');  set('lblAge',   d.age + ' *');
+  set('lblState', d.state + ' *'); set('lblCity',  d.city + ' *');
+  set('lblVillage', d.village + ' *'); set('lblPhone', d.phone + ' *'); set('lblPass', d.pass + ' *');
+  set('lblLoginPhone', d.loginPhone + ' *'); set('lblLoginPass', d.loginPass + ' *');
+  set('regBtnText', d.regBtn); set('loginBtnText', d.loginBtn);
+  set('toLoginTxt', d.toLogin); set('toRegTxt', d.toReg);
+  set('secureText', d.secure); set('aiReadyText', d.aiReady);
+  set('infoTitle1', d.t1); set('infoSub1', d.s1);
+  set('infoTitle2', d.t2); set('infoSub2', d.s2);
+  set('infoTitle3', d.t3); set('infoSub3', d.s3);
+  set('infoTitle4', d.t4); set('infoSub4', d.s4);
+
+  const loginVisible = document.getElementById('loginForm').style.display !== 'none';
+  toggleView(loginVisible);
+
+  try { __originalChangeLanguage && __originalChangeLanguage(lang); } catch(e) {}
+};
+window.changeLanguage('en');
+</script>
+</body>
+</html>
+
+

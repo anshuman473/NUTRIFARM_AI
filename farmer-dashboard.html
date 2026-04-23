@@ -1,0 +1,1239 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutri-FarmAI | Farmer Insights Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --black:   #080c08;
+            --g1:      #0f2010;
+            --g2:      #1a3a1f;
+            --g4:      #2e8c38;
+            --g5:      #46c455;
+            --g6:      #8de898;
+            --gold:    #d4a83a;
+            --gold2:   #f0cc70;
+            --cream:   #f5f0e8;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Cabinet Grotesk', sans-serif;
+            background: var(--black);
+            color: var(--cream);
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: none;
+            position: relative;
+        }
+
+        /* CURSOR */
+        .cursor-dot {
+            position: fixed; top: 0; left: 0; width: 8px; height: 8px;
+            background: var(--g5); border-radius: 50%;
+            pointer-events: none; z-index: 10001;
+            transform: translate(-50%, -50%);
+        }
+
+        .cursor-ring {
+            position: fixed; top: 0; left: 0; width: 36px; height: 36px;
+            border: 1.5px solid rgba(70, 196, 85, 0.5); border-radius: 50%;
+            pointer-events: none; z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: width .2s, height .2s, border-color .2s;
+        }
+
+        body:has(input:focus) .cursor-ring,
+        body:has(select:focus) .cursor-ring,
+        body:has(button:hover) .cursor-ring {
+            width: 60px; height: 60px; border-color: var(--g5);
+        }
+
+        /* CANVAS */
+        #bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+        /* GRAIN */
+        .grain {
+            position: fixed; inset: -50%; width: 200%; height: 200%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+            opacity: 0.025; pointer-events: none; z-index: 1;
+            animation: grainShift .5s steps(2) infinite;
+        }
+
+        @keyframes grainShift {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-2%, -1%); }
+            50% { transform: translate(1%, 2%); }
+            75% { transform: translate(2%, -2%); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* NAV */
+        .navbar {
+            position: relative; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.4rem 3.5rem;
+            border-bottom: 1px solid rgba(70, 196, 85, 0.08);
+            animation: fadeSlideDown .7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: var(--cream);
+        }
+
+        .logo-mark { width: 34px; height: 34px; }
+        .logo-mark svg { width: 34px; height: 34px; }
+        .logo-ai { color: var(--gold); }
+
+        .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+
+        .nav-status {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.72rem; letter-spacing: 0.1em;
+            text-transform: uppercase; color: rgba(245, 240, 232, 0.4);
+        }
+
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--g5); box-shadow: 0 0 8px var(--g5);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+        .btn-logout {
+            background: rgba(8, 12, 8, 0.5);
+            border: 1px solid rgba(70, 196, 85, 0.18);
+            color: var(--g5);
+            padding: 0.55rem 1.5rem;
+            border-radius: 10px;
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: none;
+            outline: none;
+            transition: all .3s ease;
+            letter-spacing: 0.08em;
+        }
+
+        .btn-logout:hover {
+            background: linear-gradient(135deg, var(--g5), var(--g4));
+            color: var(--black);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(70, 196, 85, 0.35);
+            border-color: transparent;
+        }
+
+        .lang-dropdown {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(70, 196, 85, 0.15);
+            color: var(--cream);
+            padding: 0.45rem 2rem 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-size: 0.82rem;
+            cursor: none;
+            outline: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.6rem center;
+            transition: border-color .2s, background-color .2s;
+        }
+
+        .lang-dropdown:hover { border-color: rgba(70, 196, 85, 0.35); background-color: rgba(70, 196, 85, 0.05); }
+        .lang-dropdown option { background: #0f2010; }
+
+        /* MAIN */
+        .page-shell {
+            position: relative; z-index: 10;
+            padding: 2rem 3.5rem 3rem;
+            animation: fadeUp .9s cubic-bezier(0.16, 1, 0.3, 1) .15s both;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: end;
+            gap: 2rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em;
+            text-transform: uppercase; color: var(--gold);
+            border: 1px solid rgba(212, 168, 58, 0.3);
+            background: rgba(212, 168, 58, 0.07);
+            padding: 0.35rem 0.9rem; border-radius: 4px;
+            width: fit-content;
+            margin-bottom: 1rem;
+        }
+
+        .badge-pulse { width: 5px; height: 5px; border-radius: 50%;
+            background: var(--gold); animation: blink 1.5s ease-in-out infinite; }
+
+        .page-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2.2rem, 5vw, 3.5rem);
+            font-weight: 800; line-height: 0.95; letter-spacing: -0.04em;
+        }
+
+        .page-title .t1 { color: var(--cream); display: inline; }
+        .page-title .t2 {
+            display: inline;
+            background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; background-size: 200%;
+            animation: shimmer 4s linear infinite;
+        }
+
+        @keyframes shimmer { 0% { background-position: 0%; } 100% { background-position: 200%; } }
+
+        .page-sub {
+            margin-top: .7rem;
+            font-size: 0.95rem; font-weight: 300;
+            color: rgba(245, 240, 232, 0.5);
+            max-width: 580px; line-height: 1.6;
+        }
+
+        .hero-metrics {
+            display: flex; align-items: flex-end; gap: 1.5rem;
+        }
+
+        .metric { text-align: right; }
+        .metric .mv {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem; font-weight: 800;
+            color: var(--g5); line-height: 1; letter-spacing: -.04em;
+        }
+
+        .metric .ml {
+            font-size: 0.65rem; text-transform: uppercase;
+            letter-spacing: 0.12em; color: rgba(245, 240, 232, 0.3); margin-top: 3px;
+        }
+
+        .metric-div { width: 1px; height: 36px; background: rgba(70, 196, 85, 0.15); }
+
+        /* DASHBOARD GRID */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
+            animation: fadeUp .9s cubic-bezier(0.16, 1, 0.3, 1) .3s both;
+        }
+
+        /* CARD */
+        .card {
+            position: relative;
+            background: rgba(15, 32, 16, 0.55);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1.5px solid rgba(70, 196, 85, 0.12);
+            border-top: 2px solid rgba(70, 196, 85, 0.25);
+            border-radius: 20px;
+            padding: 1.75rem;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45),
+                        0 0 0 1px rgba(70, 196, 85, 0.04),
+                        0 0 60px rgba(70, 196, 85, 0.06) inset;
+            transition: all .35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card::before {
+            content: ""; position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% -20%, rgba(70, 196, 85, 0.15), transparent 60%);
+            pointer-events: none;
+        }
+
+        .card::after {
+            content: ""; position: absolute; top: 0; left: 0;
+            height: 2px; width: 100%;
+            background: linear-gradient(90deg, transparent, var(--g5), var(--gold), transparent);
+            opacity: .6;
+        }
+
+        .card:hover {
+            border-color: rgba(70, 196, 85, 0.28);
+            transform: translateY(-4px);
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5),
+                        0 0 0 1px rgba(70, 196, 85, 0.08),
+                        0 0 80px rgba(70, 196, 85, 0.08) inset;
+        }
+
+        .card.highlight {
+            border: 2px solid var(--gold);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45),
+                        0 0 0 1px rgba(212, 168, 58, 0.2),
+                        0 0 60px rgba(212, 168, 58, 0.1) inset;
+        }
+
+        .card.highlight::after {
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0.8;
+        }
+
+        .card.wide { grid-column: span 2; }
+
+        .card h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem; font-weight: 800;
+            letter-spacing: 0.02em; color: var(--cream);
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 10px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .card h2 .icon { font-size: 1.35rem; }
+
+        .card p {
+            font-size: 0.88rem;
+            color: rgba(245, 240, 232, 0.6);
+            line-height: 1.6;
+            margin: 0.5rem 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.2rem; font-weight: 800;
+            color: var(--g5); margin: 1rem 0 0.5rem;
+            letter-spacing: -0.04em;
+            position: relative;
+            z-index: 2;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(245, 240, 232, 0.4);
+            position: relative;
+            z-index: 2;
+        }
+
+        /* LIST ITEMS */
+        .crop-list, .community-list {
+            list-style: none;
+            padding: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .crop-item, .community-item {
+            background: rgba(8, 12, 8, 0.45);
+            border: 1px solid rgba(70, 196, 85, 0.12);
+            margin: 0.75rem 0;
+            padding: 1rem;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all .25s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .crop-item:hover, .community-item:hover {
+            border-color: rgba(70, 196, 85, 0.25);
+            background: rgba(70, 196, 85, 0.05);
+            transform: translateX(4px);
+        }
+
+        .crop-item {
+            border-left-color: var(--g5);
+        }
+
+        .community-item {
+            border-left-color: var(--gold);
+        }
+
+        .item-name {
+            font-weight: 600; color: var(--cream);
+            font-size: 0.95rem;
+        }
+
+        .item-meta {
+            font-size: 0.75rem;
+            color: rgba(245, 240, 232, 0.4);
+            margin-top: 3px;
+        }
+
+        .tag {
+            background: rgba(70, 196, 85, 0.15);
+            color: var(--g5);
+            border: 1px solid rgba(70, 196, 85, 0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .tag.top-pick {
+            background: linear-gradient(135deg, var(--g5), var(--g4));
+            color: var(--black);
+            border-color: transparent;
+        }
+
+        .member-count {
+            font-size: 0.75rem;
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* ACTION BUTTON */
+        .btn-action {
+            background: rgba(8, 12, 8, 0.5);
+            border: 1px solid rgba(70, 196, 85, 0.18);
+            color: var(--g5);
+            padding: 0.7rem 1.4rem;
+            border-radius: 10px;
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: none;
+            outline: none;
+            transition: all .3s ease;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            width: 100%;
+            margin-top: 1rem;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .btn-action:hover {
+            background: linear-gradient(135deg, var(--g5), var(--g4));
+            color: var(--black);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(70, 196, 85, 0.35);
+            border-color: transparent;
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: 2rem; right: 2rem;
+            z-index: 999;
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            color: var(--black);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem;
+            box-shadow: 0 12px 32px rgba(212, 168, 58, 0.4);
+            cursor: none;
+            text-decoration: none;
+            border: none;
+            transition: all .3s ease;
+            font-weight: 800;
+        }
+
+        .fab:hover {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: 0 16px 40px rgba(212, 168, 58, 0.5);
+        }
+
+        /* FOOTER */
+        .footer {
+            position: relative; z-index: 10;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.3rem 3.5rem;
+            border-top: 1px solid rgba(70, 196, 85, 0.07);
+            margin-top: 3rem;
+        }
+
+        .footer-logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem; font-weight: 800; letter-spacing: -0.02em;
+            color: rgba(245, 240, 232, 0.3);
+        }
+
+        .footer-copy { font-size: 0.72rem; color: rgba(245, 240, 232, 0.2); letter-spacing: 0.06em; }
+
+        .footer-links { display: flex; gap: 1.5rem; }
+        .footer-link {
+            font-size: 0.72rem; letter-spacing: 0.08em;
+            text-transform: uppercase; color: rgba(245, 240, 232, 0.2);
+            text-decoration: none; transition: color .2s;
+        }
+
+        .footer-link:hover { color: var(--g5); }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+            .card.wide { grid-column: span 2; }
+        }
+
+        @media (max-width: 768px) {
+            body { cursor: auto; }
+            .cursor-dot, .cursor-ring { display: none; }
+            .navbar { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: 1rem; }
+            .page-shell { padding: 1.5rem; }
+            .page-header { grid-template-columns: 1fr; }
+            .hero-metrics { justify-content: flex-start; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .card.wide { grid-column: span 1; }
+            .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
+            .fab { width: 56px; height: 56px; font-size: 1.4rem; bottom: 1.5rem; right: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Canvas bg -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Grain -->
+<div class="grain"></div>
+
+<!-- NAV -->
+<nav class="navbar">
+    <a href="index.html" class="logo">
+        <div class="logo-mark">
+            <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(46,140,56,0.25)" stroke="#46c455" stroke-width="1"/>
+                <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(70,196,85,0.15)"/>
+                <line x1="17" y1="28" x2="17" y2="6" stroke="#46c455" stroke-width="0.8" stroke-dasharray="2 2"/>
+                <path d="M17 16 C20 12 24 14 26 18" stroke="#8de898" stroke-width="0.8" fill="none"/>
+                <path d="M17 20 C14 16 10 18 8 22" stroke="#8de898" stroke-width="0.8" fill="none"/>
+            </svg>
+        </div>
+        Nutri-Farm<span class="logo-ai">AI</span>
+    </a>
+    <div class="nav-right">
+        <div class="nav-status">
+            <div class="status-dot"></div>
+            <span id="navStatusText">Dashboard · Live</span>
+        </div>
+        <select id="dashboardLangSelect" onchange="changeLanguage(this.value)" class="lang-dropdown">
+            <option value="en">English (US)</option>
+            <option value="or">ଓଡ଼ିଆ (Odia)</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+            <option value="gu">ગુજરાતી (Gujarati)</option>
+            <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+        </select>
+        <button class="btn-logout" onclick="logout()" id="logoutBtn">Logout</button>
+    </div>
+</nav>
+
+<!-- PAGE -->
+<main class="page-shell">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <div>
+            <div class="badge">
+                <div class="badge-pulse"></div>
+                <span id="heroBadge">Farmer Dashboard</span>
+            </div>
+            <h1 class="page-title">
+                <span class="t1" id="heroT1">Your Land,</span>
+                <span class="t2" id="heroT2"> Your Insights.</span>
+            </h1>
+            <p class="page-sub" id="heroSub">
+                Real-time analysis of soil health, AI crop recommendations, and community insights tailored to your farm.
+            </p>
+        </div>
+        <div class="hero-metrics">
+            <div class="metric"><div class="mv" id="welcomeUser">--</div><div class="ml" id="welcomeLabel">Farmer</div></div>
+            <div class="metric-div"></div>
+            <div class="metric"><div class="mv" id="healthScore">--%</div><div class="ml">Health</div></div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD GRID -->
+    <div class="dashboard-grid">
+
+        <!-- SOIL HEALTH CARD -->
+        <div class="card highlight">
+            <h2><span class="icon">🌱</span><span id="soilCard">Soil Health Score</span></h2>
+            <div class="stat-value" id="soilScore">--%</div>
+            <p id="soilDesc">Based on pH level and soil composition analysis.</p>
+            <a href="land-details.html" class="btn-action">
+                <i class="fas fa-refresh"></i>
+                <span id="updateDataBtn">Update Data</span>
+            </a>
+        </div>
+
+        <!-- LAND SUMMARY CARD -->
+        <div class="card wide">
+            <h2><span class="icon">📍</span><span id="landCard">Land Summary</span></h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem; position: relative; z-index: 2;">
+                <div>
+                    <p><strong id="areaLabel">Land Area</strong></p>
+                    <p class="stat-value" style="font-size: 1.6rem;" id="dispArea">--</p>
+                    <p class="stat-label">Acres</p>
+                </div>
+                <div>
+                    <p><strong id="soilLabel">Soil Type</strong></p>
+                    <p class="stat-value" style="font-size: 1.6rem;" id="dispSoil">--</p>
+                    <p class="stat-label" id="soilTypeLabel">Composition</p>
+                </div>
+                <div>
+                    <p><strong id="waterLabel">Water Source</strong></p>
+                    <p style="color: var(--g5); font-weight: 600; margin-top: 0.5rem;" id="dispWater">--</p>
+                </div>
+                <div>
+                    <p><strong id="seasonLabel">Active Season</strong></p>
+                    <p style="color: var(--gold); font-weight: 600; margin-top: 0.5rem;" id="dispSeason">--</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI CROP SUGGESTIONS -->
+        <div class="card">
+            <h2><span class="icon">🌾</span><span id="cropCard">AI Crop Suggestions</span></h2>
+            <div class="crop-list" id="aiCropList">
+                <div class="crop-item">
+                    <span style="color: rgba(245, 240, 232, 0.5);">⏳ <span id="loadingText">Loading AI Predictions...</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- WATER RESOURCE CARD -->
+        <div class="card">
+            <h2><span class="icon">💧</span><span id="waterCard">Water Resources</span></h2>
+            <div>
+                <p id="irrigLabel"><strong>Irrigation Status</strong></p>
+                <p style="color: var(--g5); font-weight: 600; margin: 0.7rem 0;" id="dispIrrig">--</p>
+                <p style="font-size: 0.8rem; color: rgba(245, 240, 232, 0.5); margin-top: 1rem;" id="waterAdvice">
+                    Monitor water levels during peak growing season.
+                </p>
+            </div>
+        </div>
+
+        <!-- COMMUNITY CARD -->
+        <div class="card highlight wide">
+            <h2><span class="icon">👥</span><span id="communityCard">Farmer Community</span></h2>
+            <p id="communityDesc">Join discussions with 5,000+ local farmers and share crop management strategies.</p>
+            <div class="community-list">
+                <div class="community-item">
+                    <div>
+                        <div class="item-name" id="com1Name">Rice Pests Group</div>
+                        <div class="item-meta"><span class="member-count" id="com1Count">1.2k active</span></div>
+                    </div>
+                    <span>💬</span>
+                </div>
+                <div class="community-item">
+                    <div>
+                        <div class="item-name" id="com2Name">Organic Farming</div>
+                        <div class="item-meta"><span class="member-count" id="com2Count">850 active</span></div>
+                    </div>
+                    <span>🌱</span>
+                </div>
+            </div>
+            <a href="community.html" target="_blank" class="btn-action">
+                <i class="fas fa-comments"></i>
+                <span id="browseCommBtn">Browse All Communities</span>
+            </a>
+        </div>
+
+        <!-- INVESTMENT & BUDGET CARD -->
+        <div class="card">
+            <h2><span class="icon">💰</span><span id="budgetCard">Investment Capacity</span></h2>
+            <p id="budgetDesc">Your registered investment level determines recommended crop strategies.</p>
+            <div style="margin-top: 1.2rem; position: relative; z-index: 2;">
+                <p style="color: var(--gold); font-weight: 600; font-size: 1.1rem;" id="dispBudget">--</p>
+                <p style="font-size: 0.8rem; color: rgba(245, 240, 232, 0.5); margin-top: 0.7rem;" id="budgetNote">
+                    Update this on the Land Intelligence Dashboard.
+                </p>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+    <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+    <div class="footer-links">
+        <a href="#" class="footer-link">Privacy</a>
+        <a href="#" class="footer-link">Terms</a>
+        <a href="#" class="footer-link">Support</a>
+    </div>
+</footer>
+
+<!-- FAB -->
+<a href="community.html" target="_blank" class="fab" title="Community" id="communityFab">👥</a>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+
+<script>
+    /* CUSTOM CURSOR */
+    const dot = document.getElementById('cursorDot'), ring = document.getElementById('cursorRing');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => {
+        mx = e.clientX;
+        my = e.clientY;
+    });
+    (function loop() {
+        rx += (mx - rx) * 0.14;
+        ry += (my - ry) * 0.14;
+        dot.style.left = mx + 'px';
+        dot.style.top = my + 'px';
+        ring.style.left = rx + 'px';
+        ring.style.top = ry + 'px';
+        requestAnimationFrame(loop);
+    })();
+
+    /* PARTICLE CANVAS */
+    const canvas = document.getElementById('bgCanvas'), ctx = canvas.getContext('2d');
+    let W, H, particles = [];
+
+    function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+        reset() {
+            this.x = Math.random() * W;
+            this.y = Math.random() * H;
+            this.vx = (Math.random() - 0.5) * 0.32;
+            this.vy = (Math.random() - 0.5) * 0.32;
+            this.r = Math.random() * 1.8 + 0.4;
+            this.a = Math.random() * 0.5 + 0.1;
+            this.life = 0;
+            this.maxLife = Math.random() * 400 + 200;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life++;
+            if (this.x < 0 || this.x > W || this.y < 0 || this.y > H || this.life > this.maxLife) {
+                this.reset();
+            }
+        }
+        draw() {
+            const f = Math.min(this.life / 40, 1) * Math.min((this.maxLife - this.life) / 40, 1);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(70, 196, 85, ${this.a * f})`;
+            ctx.fill();
+        }
+    }
+
+    for (let i = 0; i < 110; i++) particles.push(new Particle());
+
+    function drawLines() {
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(46, 140, 56, ${0.12 * (1 - d / 100)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    function animCanvas() {
+        ctx.clearRect(0, 0, W, H);
+        const g = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, H * 0.8);
+        g.addColorStop(0, 'rgba(26, 90, 32, 0.07)');
+        g.addColorStop(0.5, 'rgba(15, 32, 16, 0.03)');
+        g.addColorStop(1, 'rgba(8, 12, 8, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        drawLines();
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+        requestAnimationFrame(animCanvas);
+    }
+    animCanvas();
+
+    /* i18n */
+    const i18n = {
+        en: {
+            badge: 'Farmer Dashboard',
+            t1: 'Your Land,',
+            t2: ' Your Insights.',
+            sub: 'Real-time analysis of soil health, AI crop recommendations, and community insights tailored to your farm.',
+            nav: 'Dashboard · Live',
+            logout: 'Logout',
+            welcomeLabel: 'Farmer',
+            soilCard: 'Soil Health Score',
+            soilDesc: 'Based on pH level and soil composition analysis.',
+            updateData: 'Update Data',
+            landCard: 'Land Summary',
+            areaLabel: 'Land Area',
+            soilLabel: 'Soil Type',
+            waterLabel: 'Water Source',
+            seasonLabel: 'Active Season',
+            soilTypeLabel: 'Composition',
+            cropCard: 'AI Crop Suggestions',
+            loadingText: 'Loading AI Predictions...',
+            waterCard: 'Water Resources',
+            irrigLabel: 'Irrigation Status',
+            waterAdvice: 'Monitor water levels during peak growing season.',
+            communityCard: 'Farmer Community',
+            communityDesc: 'Join discussions with 5,000+ local farmers and share crop management strategies.',
+            com1Name: 'Rice Pests Group',
+            com1Count: '1.2k active',
+            com2Name: 'Organic Farming',
+            com2Count: '850 active',
+            browseComm: 'Browse All Communities',
+            budgetCard: 'Investment Capacity',
+            budgetDesc: 'Your registered investment level determines recommended crop strategies.',
+            budgetNote: 'Update this on the Land Intelligence Dashboard.'
+        },
+        or: {
+            badge: 'ଚାଷୀ ଡ୍ୟାଶବୋର୍ଡ',
+            t1: 'ଆପଣଙ୍କ ଜମି,',
+            t2: ' ଆପଣଙ୍କ ବିଶ୍ଳେଷଣ।',
+            sub: 'ଆପଣଙ୍କ ଜମିର ମାଟିର ସ୍ବାସ୍ଥ୍ୟ, AI ଫସଲ ରେକମେଣ୍ଡେସନ ଓ ସମ୍ପ୍ରଦାୟ ଅନ୍ତର୍ଦୃଷ୍ଟି।',
+            nav: 'ଡ୍ୟାଶବୋର୍ଡ · ଲାଇଭ୍',
+            logout: 'ଲଗଆଉଟ',
+            welcomeLabel: 'ଚାଷୀ',
+            soilCard: 'ମାଟି ସ୍ବାସ୍ଥ୍ୟ ସ୍କୋର',
+            soilDesc: 'pH ସ୍ତର ଓ ମାଟି ରଚନା ବିଶ୍ଳେଷଣ ଆଧାରିତ।',
+            updateData: 'ଡେଟା ଅପଡେଟ',
+            landCard: 'ଜମି ସାରାଂଶ',
+            areaLabel: 'ଜମି ପରିମାଣ',
+            soilLabel: 'ମାଟି ପ୍ରକାର',
+            waterLabel: 'ଜଳ ସ୍ରୋତ',
+            seasonLabel: 'ସକ୍ରିୟ ଋତୁ',
+            soilTypeLabel: 'ରଚନା',
+            cropCard: 'AI ଫସଲ ପରାମର୍ଶ',
+            loadingText: 'AI ଭବିଷ୍ୟଦ୍ବାଣୀ ଆସୁଛେ...',
+            waterCard: 'ଜଳ ସମ୍ବଳ',
+            irrigLabel: 'ସିଞ୍ଚନ ସ୍ଥିତି',
+            waterAdvice: 'ଫସଲ ଋତୁରେ ଜଳ ସ୍ତର ନୀରୀକ୍ଷଣ କରନ୍ତୁ।',
+            communityCard: 'ଚାଷୀ ସମ୍ପ୍ରଦାୟ',
+            communityDesc: '5,000+ ସ୍ଥାନୀୟ ଚାଷୀଙ୍କ ସହିତ ଆଲୋଚନା କରନ୍ତୁ।',
+            com1Name: 'ଧାନ କୀଟ ଗ୍ରୁପ',
+            com1Count: '1.2k ସକ୍ରିୟ',
+            com2Name: 'ଜୈବ ଚାଷ',
+            com2Count: '850 ସକ୍ରିୟ',
+            browseComm: 'ସମସ୍ତ ସମ୍ପ୍ରଦାୟ ବ୍ରାଉଜ କରନ୍ତୁ',
+            budgetCard: 'ବିନିଯୋଗ ସମର୍ଥତା',
+            budgetDesc: 'ଆପଣଙ୍କ ବିନିଯୋଗ ସ୍ତର ଫସଲ ରଣନୀତି ନିର୍ଧାରଣ କରେ।',
+            budgetNote: 'ଜମି ଡ୍ୟାଶବୋର୍ଡରେ ଏଟି ଅପଡେଟ କରନ୍ତୁ।'
+        },
+        hi: {
+            badge: 'किसान डैशबोर्ड',
+            t1: 'आपकी भूमि,',
+            t2: ' आपकी अंतर्दृष्टि।',
+            sub: 'आपकी जमीन के मिट्टी स्वास्थ्य, AI फसल सिफारिशें, और सामुदायिक अंतर्दृष्टि।',
+            nav: 'डैशबोर्ड · लाइव',
+            logout: 'लॉगआउट',
+            welcomeLabel: 'किसान',
+            soilCard: 'मिट्टी स्वास्थ्य स्कोर',
+            soilDesc: 'pH स्तर और मिट्टी संरचना विश्लेषण के आधार पर।',
+            updateData: 'डेटा अपडेट करें',
+            landCard: 'भूमि सारांश',
+            areaLabel: 'भूमि क्षेत्र',
+            soilLabel: 'मिट्टी प्रकार',
+            waterLabel: 'जल स्रोत',
+            seasonLabel: 'सक्रिय मौसम',
+            soilTypeLabel: 'संरचना',
+            cropCard: 'AI फसल सुझाव',
+            loadingText: 'AI भविष्यवाणी लोड हो रही है...',
+            waterCard: 'जल संसाधन',
+            irrigLabel: 'सिंचाई स्थिति',
+            waterAdvice: 'फसल के मौसम में जल स्तर की निगरानी करें।',
+            communityCard: 'किसान समुदाय',
+            communityDesc: '5,000+ स्थानीय किसानों के साथ चर्चा करें।',
+            com1Name: 'चावल कीट समूह',
+            com1Count: '1.2k सक्रिय',
+            com2Name: 'जैविक खेती',
+            com2Count: '850 सक्रिय',
+            browseComm: 'सभी समुदाय ब्राउज़ करें',
+            budgetCard: 'निवेश क्षमता',
+            budgetDesc: 'आपका निवेश स्तर अनुशंसित फसलें निर्धारित करता है।',
+            budgetNote: 'इसे जमीन डैशबोर्ड पर अपडेट करें।'
+        },
+        bn: {
+            badge: 'কৃষক ড্যাশবোর্ড',
+            t1: 'আপনার জমি,',
+            t2: ' আপনার অন্তর্দৃষ্টি।',
+            sub: 'আপনার জমির মাটির স্বাস্থ্য, AI ফসলের সুপারিশ, এবং সম্প্রদায়ের অন্তর্দৃষ্টি।',
+            nav: 'ড্যাশবোর্ড · লাইভ',
+            logout: 'লগআউট',
+            welcomeLabel: 'কৃষক',
+            soilCard: 'মাটির স্বাস্থ্য স্কোর',
+            soilDesc: 'pH স্তর এবং মাটির গঠন বিশ্লেষণের ভিত্তিতে।',
+            updateData: 'ডেটা আপডেট করুন',
+            landCard: 'জমির সারাংশ',
+            areaLabel: 'জমির ক্ষেত্রফল',
+            soilLabel: 'মাটির ধরন',
+            waterLabel: 'জল উৎস',
+            seasonLabel: 'সক্রিয় মৌসুম',
+            soilTypeLabel: 'গঠন',
+            cropCard: 'AI ফসলের পরামর্শ',
+            loadingText: 'AI পূর্বাভাস লোড হচ্ছে...',
+            waterCard: 'জল সম্পদ',
+            irrigLabel: 'সেচ অবস্থা',
+            waterAdvice: 'ফসলের ঋতুতে জল স্তর পর্যবেক্ষণ করুন।',
+            communityCard: 'কৃষক সম্প্রদায়',
+            communityDesc: '5,000+ স্থানীয় কৃষকের সাথে আলোচনা করুন।',
+            com1Name: 'ধান কীট দল',
+            com1Count: '1.2k সক্রিয়',
+            com2Name: 'জৈব চাষ',
+            com2Count: '850 সক্রিয়',
+            browseComm: 'সমস্ত সম্প্রদায় ব্রাউজ করুন',
+            budgetCard: 'বিনিয়োগ ক্ষমতা',
+            budgetDesc: 'আপনার বিনিয়োগ স্তর সুপারিশকৃত ফসল নির্ধারণ করে।',
+            budgetNote: 'জমি ড্যাশবোর্ডে এটি আপডেট করুন।'
+        },
+        te: {
+            badge: 'రైతు డ్యాష్‌బోర్డ్',
+            t1: 'మీ భూమి,',
+            t2: ' మీ అంతర్దృష్టి.',
+            sub: 'మీ జమीనుకు నేల ఆరోగ్యం, AI పంట సిఫారసులు, సమాజ అంతర్దృష్టి.',
+            nav: 'డ్యాష్‌బోర్డ్ · లైవ్',
+            logout: 'లాగ్‌అవుట్',
+            welcomeLabel: 'రైతు',
+            soilCard: 'నేల ఆరోగ్య స్కోర్',
+            soilDesc: 'pH స్థితి మరియు నేల కూర్పు విశ్లేషణ ఆధారంగా.',
+            updateData: 'డేటా అప్‌డేట్',
+            landCard: 'జమీన్ సారాంశం',
+            areaLabel: 'జమీన్ విస్తీర్ణం',
+            soilLabel: 'నేల రకం',
+            waterLabel: 'నీటి వనరు',
+            seasonLabel: 'యాక్టివ్ సీజన్',
+            soilTypeLabel: 'కూర్పు',
+            cropCard: 'AI పంట సూచనలు',
+            loadingText: 'AI ఊహ లోడ్ చేస్తోంది...',
+            waterCard: 'నీటి సంపద',
+            irrigLabel: 'నీటిపారుదల స్థితి',
+            waterAdvice: 'పంట సీజనులో నీటి స్థితిని పర్యవేక్షించండి.',
+            communityCard: 'రైతు సమాజం',
+            communityDesc: '5,000+ స్థానిక రైతులతో చర్చ చేయండి.',
+            com1Name: 'వరి కీటల సమూహం',
+            com1Count: '1.2k సక్రియ',
+            com2Name: 'సేంద్రీయ వ్యవసాయం',
+            com2Count: '850 సక్రియ',
+            browseComm: 'అన్ని సమాజాలను బ్రౌజ్ చేయండి',
+            budgetCard: 'పెట్టుబడి సామర్థ్యం',
+            budgetDesc: 'మీ పెట్టుబడి స్థితి సిఫారసు చేసిన పంటలను నిర్ణయిస్తుంది.',
+            budgetNote: 'భూమి డ్యాష్‌బోర్డ్‌లో దీన్ని అప్‌డేట్ చేయండి.'
+        },
+        ta: {
+            badge: 'விவசாயி டாஷ்போர்டு',
+            t1: 'உங்கள் நிலம்,',
+            t2: ' உங்கள் அறிவுத்தெளிவு.',
+            sub: 'உங்கள் நிலத்தின் மண் ஆரோக்கியம், AI பயிர் பரிந்துரைகள், சமூக நுண்ணறிவு।',
+            nav: 'டாஷ்போர்டு · நேரடி',
+            logout: 'வெளியேறு',
+            welcomeLabel: 'விவசாயி',
+            soilCard: 'மண் ஆரோக்கியம் மதிப்பெண்',
+            soilDesc: 'pH அளவு மற்றும் மண் கலவை பகுப்பாய்வு அடிப்படையில்.',
+            updateData: 'தரவு புதுப்பிக்கவும்',
+            landCard: 'நிலம் சாரাংசம்',
+            areaLabel: 'நிலப் பரப்பு',
+            soilLabel: 'மண் வகை',
+            waterLabel: 'நீர் ஆதாரம்',
+            seasonLabel: 'செயலில் சீசன்',
+            soilTypeLabel: 'கலவை',
+            cropCard: 'AI பயிர் பரிந்துரைகள்',
+            loadingText: 'AI முன்னறிவிப்பு ஏற்றப்படுகிறது...',
+            waterCard: 'நீர் வளங்கள்',
+            irrigLabel: 'நீர்ப்பாசன நிலை',
+            waterAdvice: 'பயிர் சீசனில் நீர் நிலை கண்காணிக்கவும்.',
+            communityCard: 'விவசாயி சமூகம்',
+            communityDesc: '5,000+ உள்ளூர் விவசாயிகளுடன் ஆலோசிக்கவும்.',
+            com1Name: 'நெல் பூச்சி குழு',
+            com1Count: '1.2k செயலில்',
+            com2Name: 'இயற்கை வேளாண்மை',
+            com2Count: '850 செயலில்',
+            browseComm: 'அனைத்து சமூகங்களைப் பbrowse செய்யவும்',
+            budgetCard: 'முதலீட்டு திறன்',
+            budgetDesc: 'உங்கள் முதலீட்டு நிலை பரிந்துரைக்கப்பட்ட பயிர்களை தீர்மானிக்கிறது.',
+            budgetNote: 'நிலம் டாஷ்போர்ட்டில் இதைப் புதுப்பிக்கவும்.'
+        },
+        mr: {
+            badge: 'शेतकरी डॅशबोर्ड',
+            t1: 'आपली जमीन,',
+            t2: ' आपली अंतर्दृष्टी.',
+            sub: 'आपल्या जमिनीचे मातीचे स्वास्थ्य, AI पिकांचे सुझाव, समुदाय अंतर्दृष्टी।',
+            nav: 'डॅशबोर्ड · लाइव्',
+            logout: 'लॉगआउट',
+            welcomeLabel: 'शेतकरी',
+            soilCard: 'मातीचे स्वास्थ्य स्कोर',
+            soilDesc: 'pH स्तर आणि मातीची रचना विश्लेषण आधारित.',
+            updateData: 'डेटा अपडेट करा',
+            landCard: 'जमिनीचा सारांश',
+            areaLabel: 'जमीन क्षेत्र',
+            soilLabel: 'मातीचा प्रकार',
+            waterLabel: 'पाण्याचा स्रोत',
+            seasonLabel: 'सक्रिय हंगाम',
+            soilTypeLabel: 'रचना',
+            cropCard: 'AI पीक सुझाव',
+            loadingText: 'AI भविष्यवाणी लोड होत आहे...',
+            waterCard: 'जल संसाधन',
+            irrigLabel: 'सिंचन स्थिती',
+            waterAdvice: 'पीक हंगामात पाण्याचा स्तर पाहा.',
+            communityCard: 'शेतकरी समुदाय',
+            communityDesc: '5,000+ स्थानिक शेतकऱ्यांशी चर्चा करा.',
+            com1Name: 'तांदूळ कीटक समूह',
+            com1Count: '1.2k सक्रिय',
+            com2Name: 'जैविक शेती',
+            com2Count: '850 सक्रिय',
+            browseComm: 'सर्व समुदाय ब्राउज करा',
+            budgetCard: 'गुंतवणूक क्षमता',
+            budgetDesc: 'आपले गुंतवणूक स्तर शिफारस केलेल्या पिकांचा निर्धार करते.',
+            budgetNote: 'जमिनीचे डॅशबोर्डवर अपडेट करा.'
+        },
+        kn: {
+            badge: 'ರೈತ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್',
+            t1: 'ನಿಮ್ಮ ಭೂಮಿ,',
+            t2: ' ನಿಮ್ಮ ಒಳನೋಟ.',
+            sub: 'ನಿಮ್ಮ ಜಮೀನಿನ ಮಣ್ಣಿನ ಆರೋಗ್ಯ, AI ಸುಗ್ಗಿ ಶಿಫಾರಸುಗಳು, ಸಮುದಾಯ ಒಳನೋಟ.',
+            nav: 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ · ಲೈವ್',
+            logout: 'ಲಾಗ್‌ಔಟ್',
+            welcomeLabel: 'ರೈತ',
+            soilCard: 'ಮಣ್ಣಿನ ಆರೋಗ್ಯ ಸ್ಕೋರ್',
+            soilDesc: 'pH ಸ್ತರ ಮತ್ತು ಮಣ್ಣಿನ ಸಂಯೋಜನೆ ವಿಶ್ಲೇಷಣೆ ಆಧಾರಿತ.',
+            updateData: 'ಡೇಟಾ ಅಪ್‌ಡೇಟ್',
+            landCard: 'ಭೂಮಿ ಸಾರಾಂಶ',
+            areaLabel: 'ಜಮೀನಿನ ಪ್ರದೇಶ',
+            soilLabel: 'ಮಣ್ಣಿನ ಪ್ರಕಾರ',
+            waterLabel: 'ನೀರಿನ ಮೂಲ',
+            seasonLabel: 'ಸಕ್ರಿಯ ಋತು',
+            soilTypeLabel: 'ಸಂಯೋಜನೆ',
+            cropCard: 'AI ಸುಗ್ಗಿ ಸೂಚನೆಗಳು',
+            loadingText: 'AI ಭವಿಷ್ಯದ್ವಾಣಿ ಲೋಡ್ ಆಗುತ್ತಿದೆ...',
+            waterCard: 'ಜಲ ಸಂಪನ್ಮೂಲ',
+            irrigLabel: 'ನೀರಾವರಿ ಸ್ಥಿತಿ',
+            waterAdvice: 'ಸುಗ್ಗಿ ಋತುವಿನಲ್ಲಿ ನೀರಿನ ಮಾತ್ರೆಯನ್ನು ಮೇಲ್ವಿಚಾರಣೆ ಮಾಡಿ.',
+            communityCard: 'ರೈತ ಸಮುದಾಯ',
+            communityDesc: '5,000+ ಸ್ಥಳೀಯ ರೈತರೊಂದಿಗೆ ಚರ್ಚೆ ಮಾಡಿ.',
+            com1Name: 'ನೆಲ್ಲಿನ ಕೀಟ ಗುಂಪು',
+            com1Count: '1.2k ಸಕ್ರಿಯ',
+            com2Name: 'ಜೈವಿಕ ಕೃಷಿ',
+            com2Count: '850 ಸಕ್ರಿಯ',
+            browseComm: 'ಎಲ್ಲಾ ಸಮುದಾಯಗಳನ್ನು ಬ್ರೌಜ್ ಮಾಡಿ',
+            budgetCard: 'ಹೂಡಿಕೆ ಸಾಮರ್ಥ್ಯ',
+            budgetDesc: 'ನಿಮ್ಮ ಹೂಡಿಕೆ ಮಾತ್ರೆ ಶಿಫಾರಸುಗೊಳ್ಳುವ ಸುಗ್ಗಿಗಳನ್ನು ನಿರ್ಧರಿಸುತ್ತದೆ.',
+            budgetNote: 'ಜಮೀನಿನ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಇದನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಿ.'
+        },
+        gu: {
+            badge: 'ખેડૂત ડૅશબોર્ડ',
+            t1: 'તમારી જમીન,',
+            t2: ' તમારી સમજ.',
+            sub: 'તમારી જમીનનું માટીનું સ્વાસ્થ્ય, AI પાક સુઝાવો, સમુદાય સમજ.',
+            nav: 'ડૅશબોર્ડ · લાઈવ',
+            logout: 'લૉગઆઉટ',
+            welcomeLabel: 'ખેડૂત',
+            soilCard: 'માટીનું સ્વાસ્થ્ય સ્કોર',
+            soilDesc: 'pH સ્તર અને માટીનું કમ્પોઝિશન વિશ્લેષણ આધારિત.',
+            updateData: 'ડેટા અપડેટ કરો',
+            landCard: 'જમીન સારાંશ',
+            areaLabel: 'જમીનનો વિસ્તાર',
+            soilLabel: 'માટીનો પ્રકાર',
+            waterLabel: 'પાણીનો સ્ત્રોત',
+            seasonLabel: 'સક્રિય સિઝન',
+            soilTypeLabel: 'રચના',
+            cropCard: 'AI પાક સુઝાવો',
+            loadingText: 'AI આગાહી લોડ થઈ રહી છે...',
+            waterCard: 'જલ સંસાધનો',
+            irrigLabel: 'સિંચાઈ સ્થિતિ',
+            waterAdvice: 'પાક સિઝનમાં પાણીનું સ્તર મોનિટર કરો.',
+            communityCard: 'ખેડૂત સમુદાય',
+            communityDesc: '5,000+ સ્થાનિક ખેડૂતો સાથે ચર્ચા કરો.',
+            com1Name: 'ચોખાનો જંતુ ગ્રુપ',
+            com1Count: '1.2k સક્રિય',
+            com2Name: 'જૈવિક ખેતી',
+            com2Count: '850 સક્રિય',
+            browseComm: 'બધા સમુદાયો બ્રાઉઝ કરો',
+            budgetCard: 'રોકાણ ક્ષમતા',
+            budgetDesc: 'તમારું રોકાણ સ્તર ખુશામતી પાક નક્કી કરે છે.',
+            budgetNote: 'જમીન ડૅશબોર્ડ પર આ અપડેટ કરો.'
+        },
+        pa: {
+            badge: 'ਕਿਸਾਨ ਡੈਸ਼ਬੋਰਡ',
+            t1: 'ਤੁਹਾਡੀ ਜ਼ਮੀਨ,',
+            t2: ' ਤੁਹਾਡੀ ਸੂਝ।',
+            sub: 'ਤੁਹਾਡੀ ਜ਼ਮੀਨ ਦੀ ਮਿੱਟੀ ਦੀ ਸਿਹਤ, AI ਫਸਲ ਸਿਫ਼ਾਰਸ਼ਾਂ, ਸਮੁਦਾਇ ਸੂਝ।',
+            nav: 'ਡੈਸ਼ਬੋਰਡ · ਲਾਈਵ',
+            logout: 'ਲਾਗ ਆਉਟ',
+            welcomeLabel: 'ਕਿਸਾਨ',
+            soilCard: 'ਮਿੱਟੀ ਸਿਹਤ ਸਕੋਰ',
+            soilDesc: 'pH ਪੱਧਰ ਅਤੇ ਮਿੱਟੀ ਸੰਰਚਨਾ ਵਿਸ਼ਲੇਸ਼ਣ ਅਧਾਰਤ।',
+            updateData: 'ਡਾਟਾ ਅਪਡੇਟ ਕਰੋ',
+            landCard: 'ਜ਼ਮੀਨ ਖ਼ਿਲਾਸਾ',
+            areaLabel: 'ਜ਼ਮੀਨ ਖ਼ੇਤਰ',
+            soilLabel: 'ਮਿੱਟੀ ਕਿਸਮ',
+            waterLabel: 'ਪਾਣੀ ਸਰੋਤ',
+            seasonLabel: 'ਸਰਗਰਮ ਮੌਸਮ',
+            soilTypeLabel: 'ਸੰਰਚਨਾ',
+            cropCard: 'AI ਫਸਲ ਸਿਫ਼ਾਰਸ਼ਾਂ',
+            loadingText: 'AI ਭਵਿਸ਼ਯਵਾਣੀ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...',
+            waterCard: 'ਜਲ ਸੰਸਾਧਨ',
+            irrigLabel: 'ਸਿੰਚਾਈ ਸਥਿਤੀ',
+            waterAdvice: 'ਫਸਲ ਮੌਸਮ ਵਿੱਚ ਪਾਣੀ ਪੱਧਰ ਦੀ ਨਿਗਰਾਨੀ ਕਰੋ।',
+            communityCard: 'ਕਿਸਾਨ ਸਮੁਦਾਇ',
+            communityDesc: '5,000+ ਸਥਾਨਕ ਕਿਸਾਨਾਂ ਨਾਲ ਚਰਚਾ ਕਰੋ।',
+            com1Name: 'ਚੌਲਾਂ ਦੀ ਕੀਟ ਪ੍ਰੌਪ',
+            com1Count: '1.2k ਸਰਗਰਮ',
+            com2Name: 'ਜੈਵਿਕ ਖੇਤੀ',
+            com2Count: '850 ਸਰਗਰਮ',
+            browseComm: 'ਸਭ ਸਮੁਦਾਇ ਬ੍ਰਾਉਜ਼ ਕਰੋ',
+            budgetCard: 'ਪ੍ਰੋਂ ਮ ਸਮਰੱਥਾ',
+            budgetDesc: 'ਤੁਹਾਡਾ ਪ੍ਰੋਂ ਮ ਪੱਧਰ ਸਿਫ਼ਾਰਸ਼ੀ ਫਸਲਾਂ ਨੂੰ ਨਿਰਧਾਰਤ ਕਰਦਾ ਹੈ।',
+            budgetNote: 'ਜ਼ਮੀਨ ਡੈਸ਼ਬੋਰਡ ਉੱਤੇ ਇਸ ਨੂੰ ਅਪਡੇਟ ਕਰੋ।'
+        }
+    };
+
+    const __orig = (typeof window.changeLanguage === 'function') ? window.changeLanguage : null;
+
+    window.changeLanguage = function(lang) {
+        const d = i18n[lang] || i18n.en;
+        const set = (id, v) => {
+            const el = document.getElementById(id);
+            if (el && typeof v === 'string') el.textContent = v;
+        };
+        set('heroBadge', d.badge);
+        set('heroT1', d.t1);
+        set('heroT2', d.t2);
+        set('heroSub', d.sub);
+        set('navStatusText', d.nav);
+        set('logoutBtn', d.logout);
+        set('welcomeLabel', d.welcomeLabel);
+        set('soilCard', d.soilCard);
+        set('soilDesc', d.soilDesc);
+        set('updateDataBtn', d.updateData);
+        set('landCard', d.landCard);
+        set('areaLabel', d.areaLabel);
+        set('soilLabel', d.soilLabel);
+        set('waterLabel', d.waterLabel);
+        set('seasonLabel', d.seasonLabel);
+        set('soilTypeLabel', d.soilTypeLabel);
+        set('cropCard', d.cropCard);
+        set('loadingText', d.loadingText);
+        set('waterCard', d.waterCard);
+        set('irrigLabel', d.irrigLabel);
+        set('waterAdvice', d.waterAdvice);
+        set('communityCard', d.communityCard);
+        set('communityDesc', d.communityDesc);
+        set('com1Name', d.com1Name);
+        set('com1Count', d.com1Count);
+        set('com2Name', d.com2Name);
+        set('com2Count', d.com2Count);
+        set('browseCommBtn', d.browseComm);
+        set('budgetCard', d.budgetCard);
+        set('budgetDesc', d.budgetDesc);
+        set('budgetNote', d.budgetNote);
+        try { __orig && __orig(lang); } catch (e) { }
+    };
+    window.changeLanguage('en');
+
+    /* DASHBOARD DATA POPULATION */
+    document.addEventListener("DOMContentLoaded", async () => {
+        if (typeof sb === 'undefined') {
+            console.error("Supabase client not found.");
+            return;
+        }
+
+        const { data: { user }, error: authError } = await sb.auth.getUser();
+
+        if (authError || !user) {
+            alert("Session expired. Please log in again.");
+            window.location.href = "farmer-login.html";
+            return;
+        }
+
+        const { data: farmerData, error: dbError } = await sb.from('farmers').select('*').eq('id', user.id).single();
+
+        if (dbError) {
+            console.error("Database fetch error:", dbError);
+            return;
+        }
+
+        if (farmerData) {
+            document.getElementById("welcomeUser").innerText = (farmerData.name || "Farmer").split(" ")[0];
+
+            if (farmerData.land_details) {
+                const land = farmerData.land_details;
+                document.getElementById("dispArea").innerText = land.area || "--";
+                document.getElementById("dispSoil").innerText = land.soil || "--";
+                document.getElementById("dispWater").innerText = land.water || "--";
+                document.getElementById("dispSeason").innerText = land.season || "--";
+                document.getElementById("dispIrrig").innerText = land.irrigation || "--";
+                document.getElementById("dispBudget").innerText = (land.investment || "--").toUpperCase();
+
+                if (land.ph && land.ph !== "N/A") {
+                    let score = 70;
+                    if (land.ph >= 6.0 && land.ph <= 7.5) score = 92;
+                    else if (land.ph >= 5.5 && land.ph < 6.0) score = 84;
+                    document.getElementById("soilScore").innerText = score + "%";
+                    document.getElementById("healthScore").innerText = score + "%";
+                }
+
+                const aiContainer = document.getElementById("aiCropList");
+                if (land.ai_recommended_crop) {
+                    aiContainer.innerHTML = `
+                        <div class="crop-item">
+                            <div>
+                                <div class="item-name">🏆 ${land.ai_recommended_crop}</div>
+                                <div class="item-meta">AI Top Pick for your conditions</div>
+                            </div>
+                            <span class="tag top-pick">Recommended</span>
+                        </div>
+                    `;
+                } else {
+                    aiContainer.innerHTML = `
+                        <div class="crop-item">
+                            <span style="color: rgba(245, 240, 232, 0.5);">No prediction yet. Update your land data.</span>
+                        </div>
+                    `;
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

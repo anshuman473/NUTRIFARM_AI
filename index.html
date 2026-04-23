@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nutri-FarmAI | AgriTech Command Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── RESET & BASE ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black:   #080c08;
+      --g1:      #0f2010;
+      --g2:      #1a3a1f;
+      --g3:      #24622c;
+      --g4:      #2e8c38;
+      --g5:      #46c455;
+      --g6:      #8de898;
+      --gold:    #d4a83a;
+      --gold2:   #f0cc70;
+      --cream:   #f5f0e8;
+      --offwhite:#e8f0e9;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      background: var(--black);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ─── CUSTOM CURSOR ─────────────────────────────────── */
+    .cursor-dot {
+      position: fixed;
+      top: 0; left: 0;
+      width: 8px; height: 8px;
+      background: var(--g5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.05s;
+    }
+    .cursor-ring {
+      position: fixed;
+      top: 0; left: 0;
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(70,196,85,0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: transform 0.12s ease, width 0.2s, height 0.2s, border-color 0.2s;
+    }
+    body:has(.portal-card:hover) .cursor-ring {
+      width: 60px; height: 60px;
+      border-color: var(--g5);
+    }
+
+    /* ─── CANVAS BACKGROUND ─────────────────────────────── */
+    #bgCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── GRAIN OVERLAY ─────────────────────────────────── */
+    .grain {
+      position: fixed;
+      inset: -50%;
+      width: 200%; height: 200%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 1;
+      animation: grainShift 0.5s steps(2) infinite;
+    }
+    @keyframes grainShift {
+      0%   { transform: translate(0, 0); }
+      25%  { transform: translate(-2%, -1%); }
+      50%  { transform: translate(1%, 2%); }
+      75%  { transform: translate(2%, -2%); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* ─── NAVBAR ─────────────────────────────────────────── */
+    .navbar {
+      position: relative;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.4rem 3.5rem;
+      border-bottom: 1px solid rgba(70,196,85,0.08);
+      animation: fadeSlideDown 0.7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-mark {
+      position: relative;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg {
+      width: 34px; height: 34px;
+    }
+    .logo-ai { color: var(--gold); }
+
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.4);
+    }
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--g5);
+      box-shadow: 0 0 8px var(--g5);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.3; }
+    }
+
+    .lang-dropdown {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(70,196,85,0.15);
+      color: var(--cream);
+      padding: 0.45rem 2rem 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.82rem;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .lang-dropdown:hover { border-color: rgba(70,196,85,0.35); background-color: rgba(70,196,85,0.05); }
+    .lang-dropdown option { background: #0f2010; }
+
+    /* ─── HERO ───────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      z-index: 10;
+      padding: 5rem 3.5rem 2rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 2rem;
+      animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.15s both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-left {}
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      border: 1px solid rgba(212,168,58,0.3);
+      background: rgba(212,168,58,0.07);
+      padding: 0.35rem 0.9rem;
+      border-radius: 4px;
+      margin-bottom: 1.4rem;
+    }
+    .badge-pulse {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(4rem, 9vw, 8rem);
+      font-weight: 800;
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 .line1 { display: block; color: var(--cream); }
+    .hero h1 .line2 {
+      display: block;
+      background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      background-size: 200%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 0%; }
+      100% { background-position: 200%; }
+    }
+
+    .hero-tagline {
+      font-size: 1rem;
+      font-weight: 300;
+      color: rgba(245,240,232,0.5);
+      max-width: 380px;
+      line-height: 1.75;
+      letter-spacing: 0.01em;
+    }
+
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    .hero-metric {
+      text-align: right;
+    }
+    .metric-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--g5);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+    .metric-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(245,240,232,0.3);
+    }
+    .metric-divider {
+      width: 1px;
+      height: 32px;
+      background: rgba(70,196,85,0.15);
+      margin: 0.4rem auto;
+    }
+
+    /* ─── MARQUEE ────────────────────────────────────────── */
+    .marquee-wrap {
+      position: relative;
+      z-index: 10;
+      overflow: hidden;
+      border-top: 1px solid rgba(70,196,85,0.08);
+      border-bottom: 1px solid rgba(70,196,85,0.08);
+      padding: 0.75rem 0;
+      margin: 2rem 0;
+      animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.3s both;
+    }
+    .marquee-track {
+      display: flex;
+      gap: 3rem;
+      width: max-content;
+      animation: marqueeScroll 22s linear infinite;
+    }
+    .marquee-track:hover { animation-play-state: paused; }
+    @keyframes marqueeScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .marquee-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.3);
+      white-space: nowrap;
+    }
+    .marquee-item span.dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--g4);
+      display: inline-block;
+    }
+
+    /* ─── PORTAL CARDS ───────────────────────────────────── */
+    .cards-section {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5px;
+      margin: 0 3.5rem;
+      border: 1.5px solid rgba(70,196,85,0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.4s both;
+    }
+
+    .portal-card {
+      position: relative;
+      background: rgba(15,32,16,0.6);
+      backdrop-filter: blur(12px);
+      padding: 2.5rem 2rem 2rem;
+      cursor: none;
+      overflow: hidden;
+      transition: background 0.4s;
+      border-right: 1.5px solid rgba(70,196,85,0.08);
+    }
+    .portal-card:last-child { border-right: none; }
+    .portal-card:hover { background: rgba(20,50,22,0.8); }
+
+    /* Spotlight hover effect */
+    .portal-card .spotlight {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(70,196,85,0.1) 0%, transparent 65%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .portal-card:hover .spotlight { opacity: 1; }
+
+    /* consumer card gold spotlight */
+    .portal-card.consumer .spotlight {
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(212,168,58,0.12) 0%, transparent 65%);
+    }
+    .portal-card.consumer { border-top: 2px solid rgba(212,168,58,0.25); }
+    .portal-card:not(.consumer) { border-top: 2px solid rgba(70,196,85,0.12); }
+
+    /* Card decorative top line that fills on hover */
+    .card-line {
+      position: absolute;
+      top: 0; left: 0;
+      height: 2px;
+      width: 0;
+      background: linear-gradient(90deg, var(--g4), var(--g5));
+      transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    .portal-card.consumer .card-line {
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+    }
+    .portal-card:hover .card-line { width: 100%; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 3rem;
+    }
+
+    .card-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: rgba(70,196,85,0.1);
+      border: 1px solid rgba(70,196,85,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), border-color 0.3s;
+    }
+    .portal-card:hover .card-icon { transform: scale(1.1) rotate(-6deg); border-color: rgba(70,196,85,0.4); }
+    .portal-card.consumer .card-icon { background: rgba(212,168,58,0.1); border-color: rgba(212,168,58,0.2); }
+    .portal-card.consumer:hover .card-icon { border-color: rgba(212,168,58,0.5); }
+
+    .card-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: rgba(245,240,232,0.15);
+      padding: 4px 8px;
+      border: 1px solid rgba(245,240,232,0.08);
+      border-radius: 4px;
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--cream);
+      margin-bottom: 0.6rem;
+      line-height: 1.1;
+    }
+    .card-desc {
+      font-size: 0.85rem;
+      color: rgba(245,240,232,0.42);
+      font-weight: 300;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--g5);
+      transition: gap 0.3s;
+    }
+    .portal-card.consumer .card-cta { color: var(--gold); }
+    .portal-card:hover .card-cta { gap: 14px; }
+
+    .cta-arr {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(70,196,85,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      transition: background 0.3s, border-color 0.3s, transform 0.3s;
+    }
+    .portal-card:hover .cta-arr {
+      background: rgba(70,196,85,0.15);
+      border-color: var(--g5);
+      transform: rotate(45deg);
+    }
+    .portal-card.consumer .cta-arr { border-color: rgba(212,168,58,0.3); }
+    .portal-card.consumer:hover .cta-arr { background: rgba(212,168,58,0.15); border-color: var(--gold); }
+
+    .card-tag-pill {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(70,196,85,0.5);
+      background: rgba(70,196,85,0.06);
+      border: 1px solid rgba(70,196,85,0.12);
+      border-radius: 30px;
+      padding: 3px 10px;
+    }
+    .portal-card.consumer .card-tag-pill {
+      color: rgba(212,168,58,0.5);
+      background: rgba(212,168,58,0.06);
+      border-color: rgba(212,168,58,0.12);
+    }
+
+    /* ─── ABOUT SECTION ──────────────────────────────────── */
+    .about-section {
+      position: relative;
+      z-index: 10;
+      margin: 3rem 3.5rem;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 0;
+      border: 1.5px solid rgba(70,196,85,0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.55s both;
+    }
+
+    .about-left {
+      background: rgba(46,140,56,0.08);
+      border-right: 1.5px solid rgba(70,196,85,0.1);
+      padding: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    .about-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--g5);
+    }
+    .eyebrow-line {
+      flex: 1;
+      height: 1px;
+      background: rgba(70,196,85,0.2);
+    }
+    .about-left h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: var(--cream);
+    }
+    .about-stats {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(70,196,85,0.1);
+    }
+    .stat-row { display: flex; gap: 1.5rem; }
+    .stat-item {}
+    .stat-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--g5);
+      line-height: 1;
+    }
+    .stat-lbl {
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.3);
+      margin-top: 2px;
+    }
+
+    .about-right {
+      background: rgba(8,12,8,0.4);
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .about-right::before {
+      content: '"';
+      position: absolute;
+      top: -0.5rem; left: 2rem;
+      font-family: 'Syne', sans-serif;
+      font-size: 14rem;
+      font-weight: 800;
+      color: rgba(70,196,85,0.04);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+    .about-text {
+      position: relative;
+      font-size: 0.98rem;
+      font-weight: 300;
+      line-height: 1.85;
+      color: rgba(245,240,232,0.55);
+    }
+    .about-text + .about-text { margin-top: 1rem; }
+
+    .about-grid-deco {
+      position: absolute;
+      bottom: 2rem; right: 2rem;
+      display: grid;
+      grid-template-columns: repeat(4, 10px);
+      grid-template-rows: repeat(4, 10px);
+      gap: 6px;
+      opacity: 0.12;
+    }
+    .deco-dot {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--g5);
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────────── */
+    .footer {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 3.5rem;
+      border-top: 1px solid rgba(70,196,85,0.07);
+      margin-top: 1rem;
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: rgba(245,240,232,0.3);
+    }
+    .footer-copy {
+      font-size: 0.72rem;
+      color: rgba(245,240,232,0.2);
+      letter-spacing: 0.06em;
+    }
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+    .footer-link {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-link:hover { color: var(--g5); }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .navbar    { padding: 1.2rem 2rem; }
+      .hero      { padding: 3rem 2rem 1.5rem; grid-template-columns: 1fr; }
+      .hero-right { display: none; }
+      .cards-section { margin: 0 2rem; grid-template-columns: 1fr; }
+      .portal-card { border-right: none; border-bottom: 1.5px solid rgba(70,196,85,0.08); }
+      .portal-card:last-child { border-bottom: none; }
+      .about-section { margin: 2rem 2rem; grid-template-columns: 1fr; }
+      .about-left { border-right: none; border-bottom: 1.5px solid rgba(70,196,85,0.1); }
+      .footer { padding: 1.2rem 2rem; }
+      .footer-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Animated canvas background -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Film grain -->
+<div class="grain"></div>
+
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <div class="logo">
+    <div class="logo-mark">
+      <!-- Animated leaf SVG logo mark -->
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(46,140,56,0.25)" stroke="#46c455" stroke-width="1"/>
+        <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(70,196,85,0.15)"/>
+        <line x1="17" y1="28" x2="17" y2="6" stroke="#46c455" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <path d="M17 16 C20 12 24 14 26 18" stroke="#8de898" stroke-width="0.8" fill="none"/>
+        <path d="M17 20 C14 16 10 18 8 22" stroke="#8de898" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    Nutri-Farm<span class="logo-ai">AI</span>
+  </div>
+
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      System Active
+    </div>
+    <select id="homeLangSelect" onchange="changeLanguage(this.value)" class="lang-dropdown">
+      <option value="en">English</option>
+      <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="bn">বাংলা (Bengali)</option>
+      <option value="te">తెలుగు (Telugu)</option>
+      <option value="ta">தமிழ் (Tamil)</option>
+      <option value="mr">मराठी (Marathi)</option>
+      <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      <option value="gu">ગુજરાતી (Gujarati)</option>
+      <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+    </select>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="badge">
+      <div class="badge-pulse"></div>
+      <span id="heroBadge">Innovation for Earth</span>
+    </div>
+    <h1>
+      <span class="line1" id="heroLine1">Nutri</span>
+      <span class="line2" id="heroLine2">FarmAI</span>
+    </h1>
+    <p class="hero-tagline" id="heroTagline">Bridging the gap between rural wisdom and modern technology.</p>
+  </div>
+  <div class="hero-right">
+    <div class="hero-metric">
+      <div class="metric-val">AI</div>
+      <div class="metric-label">Powered</div>
+    </div>
+    <div class="metric-divider"></div>
+    <div class="hero-metric">
+      <div class="metric-val">9+</div>
+      <div class="metric-label">Languages</div>
+    </div>
+    <div class="metric-divider"></div>
+    <div class="hero-metric">
+      <div class="metric-val">3</div>
+      <div class="metric-label">Portals</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── MARQUEE ── -->
+<div class="marquee-wrap">
+  <div class="marquee-track" id="marqueeTrack">
+    <!-- duplicated for seamless loop -->
+    <div class="marquee-item"><span class="dot"></span> Soil Intelligence</div>
+    <div class="marquee-item"><span class="dot"></span> Climate-Smart Advisory</div>
+    <div class="marquee-item"><span class="dot"></span> Precision Agriculture</div>
+    <div class="marquee-item"><span class="dot"></span> Nutrition Tracking</div>
+    <div class="marquee-item"><span class="dot"></span> NGO Ecosystem</div>
+    <div class="marquee-item"><span class="dot"></span> Food Security</div>
+    <div class="marquee-item"><span class="dot"></span> Home Gardening AI</div>
+    <div class="marquee-item"><span class="dot"></span> Rural Empowerment</div>
+    <div class="marquee-item"><span class="dot"></span> Soil Intelligence</div>
+    <div class="marquee-item"><span class="dot"></span> Climate-Smart Advisory</div>
+    <div class="marquee-item"><span class="dot"></span> Precision Agriculture</div>
+    <div class="marquee-item"><span class="dot"></span> Nutrition Tracking</div>
+    <div class="marquee-item"><span class="dot"></span> NGO Ecosystem</div>
+    <div class="marquee-item"><span class="dot"></span> Food Security</div>
+    <div class="marquee-item"><span class="dot"></span> Home Gardening AI</div>
+    <div class="marquee-item"><span class="dot"></span> Rural Empowerment</div>
+  </div>
+</div>
+
+<!-- ── PORTAL CARDS ── -->
+<section class="cards-section">
+
+  <!-- Farmer -->
+  <div class="portal-card" onclick="location.href='farmer-login.html'">
+    <div class="card-line"></div>
+    <div class="spotlight"></div>
+    <div class="card-header">
+      <div class="card-icon">👨‍🌾</div>
+      <div class="card-num">01</div>
+    </div>
+    <div class="card-title" id="cardTitleFarmer">Farmer Portal</div>
+    <div class="card-desc"  id="cardDescFarmer">Soil health tracking and AI-powered agricultural advisory for smarter harvests.</div>
+    <div class="card-footer">
+      <div class="card-cta">
+        <span id="exploreFarmer">Explore</span>
+        <div class="cta-arr">↗</div>
+      </div>
+      <div class="card-tag-pill">Agriculture</div>
+    </div>
+  </div>
+
+  <!-- Consumer -->
+  <div class="portal-card consumer" onclick="location.href='person-login.html'">
+    <div class="card-line"></div>
+    <div class="spotlight"></div>
+    <div class="card-header">
+      <div class="card-icon">🥗</div>
+      <div class="card-num">02</div>
+    </div>
+    <div class="card-title" id="cardTitlePerson">Consumer Portal</div>
+    <div class="card-desc"  id="cardDescPerson">Manage home gardens and track personal nutrition with AI-driven insights.</div>
+    <div class="card-footer">
+      <div class="card-cta">
+        <span id="explorePerson">Explore</span>
+        <div class="cta-arr">↗</div>
+      </div>
+      <div class="card-tag-pill">Nutrition</div>
+    </div>
+  </div>
+
+  <!-- NGO -->
+  <div class="portal-card" onclick="location.href='#'">
+    <div class="card-line"></div>
+    <div class="spotlight"></div>
+    <div class="card-header">
+      <div class="card-icon">🤝</div>
+      <div class="card-num">03</div>
+    </div>
+    <div class="card-title" id="cardTitleNgo">NGO Portal</div>
+    <div class="card-desc"  id="cardDescNgo">Support farmers at scale and manage community projects across regions.</div>
+    <div class="card-footer">
+      <div class="card-cta">
+        <span id="exploreNgo">Explore</span>
+        <div class="cta-arr">↗</div>
+      </div>
+      <div class="card-tag-pill">Community</div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ── ABOUT ── -->
+<section class="about-section">
+  <div class="about-left">
+    <div>
+      <div class="about-eyebrow">
+        About <div class="eyebrow-line"></div>
+      </div>
+    </div>
+    <h2 id="aboutTitle">Our Mission &amp; Vision</h2>
+    <div class="about-stats">
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="stat-num">3+</div>
+          <div class="stat-lbl">Portals</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">9</div>
+          <div class="stat-lbl">Languages</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="stat-num">AI</div>
+          <div class="stat-lbl">First Platform</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">∞</div>
+          <div class="stat-lbl">Impact</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="about-right">
+    <p class="about-text" id="aboutText1">
+      Nutri-FarmAI is more than just a tool; it is a movement to harmonize traditional agricultural wisdom with cutting-edge Artificial Intelligence. Our mission is to ensure food security by providing farmers with high-precision soil analytics and climate-smart advisory.
+    </p>
+    <p class="about-text" id="aboutText2">
+      For the modern consumer, we bring the farm to the doorstep, offering AI-driven insights for home gardening and personal nutrition tracking. By collaborating with NGOs, we create a transparent ecosystem where data-driven support reaches the most remote corners of the globe, fostering a greener and more sustainable future for all.
+    </p>
+    <!-- decorative dot grid -->
+    <div class="about-grid-deco">
+      <div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div>
+      <div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div>
+      <div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div>
+      <div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div><div class="deco-dot"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer">
+  <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+  <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Contact</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ─── CUSTOM CURSOR ──────────────────────────────────────── */
+const dot  = document.getElementById('cursorDot');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+(function loop() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  dot.style.left  = mx + 'px';
+  dot.style.top   = my + 'px';
+  ring.style.left = rx + 'px';
+  ring.style.top  = ry + 'px';
+  requestAnimationFrame(loop);
+})();
+
+/* ─── CANVAS PARTICLE NETWORK ─────────────────────────────── */
+const canvas = document.getElementById('bgCanvas');
+const ctx    = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x   = Math.random() * W;
+    this.y   = Math.random() * H;
+    this.vx  = (Math.random() - 0.5) * 0.35;
+    this.vy  = (Math.random() - 0.5) * 0.35;
+    this.r   = Math.random() * 1.8 + 0.4;
+    this.a   = Math.random() * 0.5 + 0.1;
+    this.life = 0;
+    this.maxLife = Math.random() * 400 + 200;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life++;
+    if (this.x < 0 || this.x > W || this.y < 0 || this.y > H || this.life > this.maxLife) this.reset();
+  }
+  draw() {
+    const fade = Math.min(this.life / 40, 1) * Math.min((this.maxLife - this.life) / 40, 1);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(70,196,85,${this.a * fade})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d  = Math.sqrt(dx*dx + dy*dy);
+      if (d < 100) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(46,140,56,${0.12 * (1 - d/100)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animCanvas() {
+  ctx.clearRect(0, 0, W, H);
+  // Radial ambient glow
+  const grd = ctx.createRadialGradient(W*0.5, H*0.3, 0, W*0.5, H*0.3, H*0.8);
+  grd.addColorStop(0,   'rgba(26,90,32,0.06)');
+  grd.addColorStop(0.5, 'rgba(15,32,16,0.03)');
+  grd.addColorStop(1,   'rgba(8,12,8,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, H);
+
+  drawLines();
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animCanvas);
+}
+animCanvas();
+
+/* ─── CARD SPOTLIGHT ─────────────────────────────────────── */
+document.querySelectorAll('.portal-card').forEach(card => {
+  const sp = card.querySelector('.spotlight');
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width  * 100).toFixed(1) + '%';
+    const y = ((e.clientY - r.top)  / r.height * 100).toFixed(1) + '%';
+    card.style.setProperty('--mx', x);
+    card.style.setProperty('--my', y);
+  });
+});
+
+/* ─── LANGUAGE SWITCHER ──────────────────────────────────── */
+const translations = {
+  en: {
+    badge:'Innovation for Earth', line1:'Nutri', line2:'FarmAI',
+    tagline:'Bridging the gap between rural wisdom and modern technology.',
+    farmer:'Farmer Portal', farmerDesc:'Soil health tracking and AI-powered agricultural advisory for smarter harvests.',
+    person:'Consumer Portal', personDesc:'Manage home gardens and track personal nutrition with AI-driven insights.',
+    ngo:'NGO Portal', ngoDesc:'Support farmers at scale and manage community projects across regions.',
+    explore:'Explore', aboutTitle:'Our Mission & Vision',
+    about1:'Nutri-FarmAI is more than just a tool; it is a movement to harmonize traditional agricultural wisdom with cutting-edge Artificial Intelligence. Our mission is to ensure food security by providing farmers with high-precision soil analytics and climate-smart advisory.',
+    about2:'For the modern consumer, we bring the farm to the doorstep, offering AI-driven insights for home gardening and personal nutrition tracking. By collaborating with NGOs, we create a transparent ecosystem where data-driven support reaches the most remote corners of the globe, fostering a greener and more sustainable future for all.'
+  },
+  or: {
+    badge:'ପୃଥିବୀ ପ୍ରତି ଉଦ୍ଭାବନ', line1:'ନ୍ୟୁଟ୍ରି', line2:'ଫାର୍ମAI',
+    tagline:'ଗ୍ରାମୀଣ ଜ୍ଞାନ ଓ ଆଧୁନିକ ପ୍ରଯୁକ୍ତି ମଧ୍ୟରେ ସେତୁ।',
+    farmer:'କୃଷକ ପୋର୍ଟାଲ', farmerDesc:'ଉନ୍ନତ ମାଟି ସ୍ୱାସ୍ଥ୍ୟ ଟ୍ରାକିଂ ଏବଂ AI ପରାମର୍ଶ।',
+    person:'ଉପଭୋକ୍ତା ପୋର୍ଟାଲ', personDesc:'ଗୃହ ବଗିଚା ଓ ପୁଷ୍ଟି ପ୍ରବନ୍ଧନ।',
+    ngo:'NGO ପୋର୍ଟାଲ', ngoDesc:'କୃଷକ ସହାୟତା ଏବଂ ଗ୍ରାମ ପ୍ରକଳ୍ପ ପ୍ରବନ୍ଧନ।',
+    explore:'ଅନ୍ୱେଷଣ', aboutTitle:'ଆମ ଲକ୍ଷ୍ୟ ଓ ଦୃଷ୍ଟି',
+    about1:'ନ୍ୟୁଟ୍ରି-ଫାର୍ମAI ଏକ ଉଦ୍ୟୋଗ ଯାହା ଐତିହ୍ୟବାହୀ କୃଷି ଜ୍ଞାନ ଏବଂ AI ର ସଂଯୋଗ ଘଟାଏ।',
+    about2:'ଆଧୁନିକ ଉପଭୋକ୍ତାଙ୍କ ପାଇଁ, ଆମେ ଗୃହ ବଗିଚା ଓ ପୁଷ୍ଟି ଟ୍ରାକିଂ ସୁବିଧା ଦିଅ।'
+  },
+  hi: {
+    badge:'धरती के लिए नवाचार', line1:'न्यूट्री', line2:'फार्मAI',
+    tagline:'ग्रामीण ज्ञान और आधुनिक तकनीक के बीच सेतु।',
+    farmer:'किसान पोर्टल', farmerDesc:'मृदा स्वास्थ्य ट्रैकिंग और AI-संचालित कृषि सलाह।',
+    person:'उपभोक्ता पोर्टल', personDesc:'घरेलू बागवानी और व्यक्तिगत पोषण ट्रैकिंग।',
+    ngo:'एनजीओ पोर्टल', ngoDesc:'किसानों का समर्थन और समुदाय परियोजना प्रबंधन।',
+    explore:'एक्सप्लोर', aboutTitle:'हमारा मिशन और दृष्टि',
+    about1:'न्यूट्री-फार्मAI पारंपरिक कृषि ज्ञान और AI को जोड़ने का आंदोलन है।',
+    about2:'आधुनिक उपभोक्ताओं के लिए, हम घरेलू बागवानी और पोषण में AI अंतर्दृष्टि प्रदान करते हैं।'
+  },
+  bn: {
+    badge:'পৃথিবীর জন্য উদ্ভাবন', line1:'নিউট্রি', line2:'ফার্মAI',
+    tagline:'গ্রামীণ জ্ঞান এবং আধুনিক প্রযুক্তির মধ্যে সেতু।',
+    farmer:'কৃষক পোর্টাল', farmerDesc:'মাটির স্বাস্থ্য ট্র্যাকিং এবং AI কৃষি পরামর্শ।',
+    person:'ভোক্তা পোর্টাল', personDesc:'গৃহ বাগান এবং পুষ্টি ট্র্যাকিং।',
+    ngo:'এনজিও পোর্টাল', ngoDesc:'কৃষক সহায়তা এবং সম্প্রদায় প্রকল্প ব্যবস্থাপনা।',
+    explore:'অন্বেষণ', aboutTitle:'আমাদের মিশন এবং দৃষ্টি',
+    about1:'নিউট্রি-ফার্মAI ঐতিহ্যবাহী কৃষি জ্ঞান এবং AI-এর সমন্বয়ের আন্দোলন।',
+    about2:'আধুনিক ভোক্তাদের জন্য, আমরা গৃহ বাগান ও পুষ্টি ট্র্যাকিংয়ে AI-চালিত অন্তর্দৃষ্টি প্রদান করি।'
+  },
+  te: {
+    badge:'భూమి కోసం ఆవిష్కరణ', line1:'న్యూట్రి', line2:'ఫామ్AI',
+    tagline:'గ్రామీణ జ్ఞానం మరియు ఆధునిక సాంకేతికత మధ్య వంతెన.',
+    farmer:'రైతు పోర్టల్', farmerDesc:'నేల ఆరోగ్య ట్రాకింగ్ మరియు AI వ్యవసాయ సలహా.',
+    person:'వినియోగదారు పోర్టల్', personDesc:'గృహ తోటలు మరియు పోషకాహార ట్రాకింగ్.',
+    ngo:'NGO పోర్టల్', ngoDesc:'రైతులకు మద్దతు మరియు సముదాయ ప్రాజెక్ట్ నిర్వహణ.',
+    explore:'అన్వేషించు', aboutTitle:'మా లక్ష్యం మరియు దృష్టి',
+    about1:'న్యూట్రి-ఫామ్AI సంప్రదాయ వ్యవసాయ జ్ఞానం మరియు AIని సమన్వయం చేసే ఒక ఉద్యమం.',
+    about2:'ఆధునిక వినియోగదారుల కోసం, మేము గృహ తోటలు మరియు పోషకాహార ట్రాకింగ్‌లో AI అంతర్దృష్టులను అందిస్తున్నాం.'
+  }
+};
+
+function changeLanguage(lang) {
+  const d = translations[lang] || translations['en'];
+  const s = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  s('heroBadge',       d.badge);
+  s('heroLine1',       d.line1);
+  s('heroLine2',       d.line2);
+  s('heroTagline',     d.tagline);
+  s('cardTitleFarmer', d.farmer);
+  s('cardDescFarmer',  d.farmerDesc);
+  s('cardTitlePerson', d.person);
+  s('cardDescPerson',  d.personDesc);
+  s('cardTitleNgo',    d.ngo);
+  s('cardDescNgo',     d.ngoDesc);
+  s('exploreFarmer',   d.explore);
+  s('explorePerson',   d.explore);
+  s('exploreNgo',      d.explore);
+  s('aboutTitle',      d.aboutTitle);
+  s('aboutText1',      d.about1);
+  s('aboutText2',      d.about2);
+}
+
+/* ─── SCROLL REVEAL ──────────────────────────────────────── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.cards-section, .about-section').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(32px)';
+  el.style.transition = 'opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>

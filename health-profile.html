@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nutri-FarmAI | Personal Nutrition Architect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black:  #080c08;
+      --g1:     #0f2010;
+      --g2:     #1a3a1f;
+      --g4:     #2e8c38;
+      --g5:     #46c455;
+      --g6:     #8de898;
+      --gold:   #d4a83a;
+      --gold2:  #f0cc70;
+      --cream:  #f5f0e8;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      background: var(--black);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+      position: relative;
+    }
+
+    /* CURSOR */
+    .cursor-dot {
+      position: fixed; top:0; left:0; width:8px; height:8px;
+      background: var(--g5); border-radius:50%;
+      pointer-events:none; z-index:10001;
+      transform: translate(-50%, -50%);
+    }
+    .cursor-ring {
+      position: fixed; top:0; left:0; width:36px; height:36px;
+      border: 1.5px solid rgba(70,196,85,0.5); border-radius:50%;
+      pointer-events:none; z-index:10000;
+      transform: translate(-50%, -50%);
+      transition: width .2s, height .2s, border-color .2s;
+    }
+    body:has(input:focus) .cursor-ring,
+    body:has(select:focus) .cursor-ring,
+    body:has(button:hover) .cursor-ring,
+    body:has(.tag:hover) .cursor-ring {
+      width: 60px; height: 60px; border-color: var(--g5);
+    }
+
+    /* CANVAS */
+    #bgCanvas { position: fixed; inset:0; z-index:0; pointer-events:none; }
+
+    /* GRAIN */
+    .grain {
+      position: fixed; inset:-50%; width:200%; height:200%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025; pointer-events:none; z-index:1;
+      animation: grainShift .5s steps(2) infinite;
+    }
+    @keyframes grainShift {
+      0%{transform:translate(0,0);} 25%{transform:translate(-2%,-1%);}
+      50%{transform:translate(1%,2%);} 75%{transform:translate(2%,-2%);} 100%{transform:translate(0,0);}
+    }
+
+    /* NAV */
+    .navbar {
+      position: relative; z-index:100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.4rem 3.5rem;
+      border-bottom: 1px solid rgba(70,196,85,0.08);
+      animation: fadeSlideDown .7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes fadeSlideDown {
+      from{opacity:0;transform:translateY(-24px);} to{opacity:1;transform:translateY(0);}
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight:800; letter-spacing:-0.03em;
+      display:flex; align-items:center; gap:10px;
+      text-decoration:none; color: var(--cream);
+    }
+    .logo-mark svg { width:34px; height:34px; }
+    .logo-ai { color: var(--gold); }
+
+    .nav-right { display:flex; align-items:center; gap:1.5rem; }
+    .nav-status {
+      display:flex; align-items:center; gap:8px;
+      font-size:0.72rem; letter-spacing:0.1em;
+      text-transform:uppercase; color: rgba(245,240,232,0.4);
+    }
+    .status-dot {
+      width:6px; height:6px; border-radius:50%;
+      background: var(--g5); box-shadow: 0 0 8px var(--g5);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+    .lang-dropdown {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(70,196,85,0.15);
+      color: var(--cream);
+      padding: 0.45rem 2rem 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.82rem;
+      cursor: none; outline: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      transition: border-color .2s, background-color .2s;
+    }
+    .lang-dropdown:hover { border-color: rgba(70,196,85,0.35); background-color: rgba(70,196,85,0.05); }
+    .lang-dropdown option { background: #0f2010; }
+
+    /* MAIN */
+    .page-shell {
+      position: relative; z-index:10;
+      padding: 2rem 3.5rem 3rem;
+      animation: fadeUp .9s cubic-bezier(0.16,1,0.3,1) .15s both;
+    }
+    @keyframes fadeUp {
+      from{opacity:0;transform:translateY(40px);} to{opacity:1;transform:translateY(0);}
+    }
+
+    .page-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-flex; align-items:center; gap:8px;
+      font-size:0.7rem; font-weight:500; letter-spacing:0.14em;
+      text-transform:uppercase; color: var(--gold);
+      border: 1px solid rgba(212,168,58,0.3);
+      background: rgba(212,168,58,0.07);
+      padding: 0.35rem 0.9rem; border-radius: 4px;
+      width: fit-content;
+      margin-bottom: 1rem;
+    }
+    .badge-pulse { width:5px; height:5px; border-radius:50%;
+      background: var(--gold); animation: blink 1.5s ease-in-out infinite; }
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight:800; line-height:0.95; letter-spacing:-0.04em;
+    }
+    .page-title .t1 { color: var(--cream); display:inline; }
+    .page-title .t2 {
+      display:inline;
+      background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; background-size: 200%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:0%;} 100%{background-position:200%;} }
+    .page-sub {
+      margin-top: .7rem;
+      font-size: 0.95rem; font-weight:300;
+      color: rgba(245,240,232,0.5);
+      max-width: 580px; line-height:1.6;
+    }
+
+    .hero-metrics { display: flex; align-items: flex-end; gap: 1.5rem; }
+    .metric { text-align:right; }
+    .metric .mv {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem; font-weight:800;
+      color: var(--g5); line-height:1; letter-spacing:-.04em;
+    }
+    .metric .ml {
+      font-size:0.65rem; text-transform:uppercase;
+      letter-spacing:0.12em; color: rgba(245,240,232,0.3); margin-top:3px;
+    }
+    .metric-div { width:1px; height:36px; background: rgba(70,196,85,0.15); }
+
+    /* CARD */
+    .dashboard-container {
+      position: relative;
+      background: rgba(15,32,16,0.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(70,196,85,0.12);
+      border-top: 2px solid rgba(70,196,85,0.25);
+      border-radius: 20px;
+      padding: 2rem 2.25rem 2.25rem;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45),
+                  0 0 0 1px rgba(70,196,85,0.04),
+                  0 0 60px rgba(70,196,85,0.06) inset;
+      margin-bottom: 1.5rem;
+    }
+    .dashboard-container::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% -20%, rgba(70,196,85,0.15), transparent 60%);
+      pointer-events: none;
+    }
+    .dashboard-container::after {
+      content: ""; position: absolute; top: 0; left: 0;
+      height: 2px; width: 100%;
+      background: linear-gradient(90deg, transparent, var(--g5), var(--gold), transparent);
+      opacity: .6;
+    }
+
+    .header-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.75rem; padding-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(70,196,85,0.1);
+      position: relative;
+    }
+    .header-left { display:flex; align-items:center; gap: 14px; flex-wrap: wrap; }
+    .chip {
+      display:inline-flex; align-items:center; gap:8px;
+      font-size:0.65rem; letter-spacing:0.14em; text-transform:uppercase;
+      color: var(--g5);
+      background: rgba(70,196,85,0.08);
+      border: 1px solid rgba(70,196,85,0.18);
+      border-radius: 30px;
+      padding: 5px 12px;
+    }
+    .chip .mini-dot {
+      width:5px; height:5px; border-radius:50%;
+      background: var(--g5); box-shadow: 0 0 6px var(--g5);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+    .chip.gold {
+      color: var(--gold);
+      background: rgba(212,168,58,0.08);
+      border-color: rgba(212,168,58,0.25);
+    }
+    .chip.gold .mini-dot { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+
+    h2.section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem; font-weight:800;
+      letter-spacing:0.02em; color: var(--cream);
+      text-transform: uppercase;
+    }
+
+    /* GRID */
+    .grid-system {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.1rem 1.25rem;
+    }
+    .group-title {
+      grid-column: span 4;
+      display: flex; align-items: center; gap: 12px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.72rem; font-weight: 800;
+      letter-spacing: 0.14em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-top: 0.2rem;
+    }
+    .group-title::before {
+      content: "";
+      width: 28px; height: 1px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+    }
+    .group-title .gt-num {
+      font-size: 0.6rem; color: rgba(245,240,232,0.25);
+      letter-spacing: 0.16em; margin-left: auto;
+    }
+
+    .field { display: flex; flex-direction: column; }
+    .field.col-2 { grid-column: span 2; }
+    .field.full  { grid-column: span 4; }
+
+    label {
+      font-size: 0.62rem; margin-bottom: 6px;
+      color: rgba(245,240,232,0.45);
+      font-weight: 500; letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    input, select {
+      background: rgba(8,12,8,0.55);
+      border: 1px solid rgba(70,196,85,0.14);
+      color: var(--cream);
+      padding: 0.78rem 0.95rem;
+      border-radius: 10px;
+      outline: none;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.88rem;
+      transition: border-color .25s, background .25s, box-shadow .25s;
+      width: 100%;
+    }
+    input::placeholder { color: rgba(245,240,232,0.25); }
+    input:hover, select:hover { border-color: rgba(70,196,85,0.28); }
+    input:focus, select:focus {
+      border-color: var(--g5);
+      background: rgba(70,196,85,0.05);
+      box-shadow: 0 0 0 3px rgba(70,196,85,0.08);
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.9rem center;
+      padding-right: 2rem;
+      cursor: none;
+    }
+    option { background: #0f2010; color: var(--cream); }
+
+    /* OUTPUT BOX */
+    .output-box {
+      grid-column: span 4;
+      margin-top: 0.6rem;
+      background: rgba(8,12,8,0.5);
+      border: 1px dashed rgba(212,168,58,0.4);
+      border-radius: 14px;
+      padding: 1.3rem 1.4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .output-box::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 0% 50%, rgba(212,168,58,0.08), transparent 50%);
+      pointer-events: none;
+    }
+    .output-label {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem; font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+    .output-label i { font-size: 0.9rem; }
+    .output-sub {
+      font-size: 0.78rem; color: rgba(245,240,232,0.45);
+      margin-bottom: 1rem;
+    }
+    .tag-container {
+      display: flex; flex-wrap: wrap; gap: 10px;
+    }
+    .tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 14px;
+      background: rgba(70,196,85,0.08);
+      border: 1px solid rgba(70,196,85,0.22);
+      color: var(--g6);
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      cursor: none;
+      transition: all .3s ease;
+    }
+    .tag i { color: var(--gold); font-size: 0.68rem; }
+    .tag:hover {
+      background: rgba(70,196,85,0.16);
+      border-color: var(--g5);
+      color: var(--cream);
+      transform: translateY(-2px);
+    }
+
+    /* SUBMIT */
+    .footer-action {
+      display: flex; justify-content: center;
+      margin-top: 0.5rem;
+    }
+    .submit-btn {
+      min-width: 320px;
+      padding: 1rem 2.5rem;
+      border-radius: 12px;
+      border: none;
+      cursor: none;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--black);
+      background: linear-gradient(135deg, var(--g5), var(--g4));
+      position: relative;
+      overflow: hidden;
+      transition: transform .25s ease, box-shadow .25s ease, letter-spacing .3s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 14px;
+    }
+    .submit-btn .arr {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: rgba(8,12,8,0.2);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; transition: transform .3s;
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      letter-spacing: 0.22em;
+      box-shadow: 0 14px 32px rgba(70,196,85,0.35);
+    }
+    .submit-btn:hover .arr { transform: rotate(45deg); }
+    .submit-btn::before {
+      content: ""; position:absolute; inset:0;
+      background: linear-gradient(90deg, transparent, rgba(245,240,232,0.28), transparent);
+      transform: translateX(-120%); transition: transform .7s;
+    }
+    .submit-btn:hover::before { transform: translateX(120%); }
+
+    /* FOOTER */
+    .footer {
+      position: relative; z-index:10;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.3rem 3.5rem;
+      border-top: 1px solid rgba(70,196,85,0.07);
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size:0.95rem; font-weight:800; letter-spacing:-0.02em;
+      color: rgba(245,240,232,0.3);
+    }
+    .footer-copy { font-size:0.72rem; color: rgba(245,240,232,0.2); letter-spacing:0.06em; }
+    .footer-links { display:flex; gap: 1.5rem; }
+    .footer-link {
+      font-size:0.72rem; letter-spacing:0.08em;
+      text-transform:uppercase; color: rgba(245,240,232,0.2);
+      text-decoration:none; transition: color .2s;
+    }
+    .footer-link:hover { color: var(--g5); }
+
+    /* RESPONSIVE */
+    @media (max-width: 1000px) {
+      body { cursor: auto; }
+      .cursor-dot, .cursor-ring { display: none; }
+      .navbar { padding: 1.2rem 1.5rem; }
+      .page-shell { padding: 1.5rem; }
+      .page-top { grid-template-columns: 1fr; }
+      .hero-metrics { justify-content: flex-start; }
+      .grid-system { grid-template-columns: repeat(2, 1fr); }
+      .group-title, .output-box { grid-column: span 2; }
+      .field.col-2, .field.full { grid-column: span 2; }
+      .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
+    }
+    @media (max-width: 560px) {
+      .grid-system { grid-template-columns: 1fr; }
+      .group-title, .output-box, .field.col-2, .field.full { grid-column: span 1; }
+      .dashboard-container { padding: 1.5rem 1.25rem; }
+      .header-bar { flex-wrap: wrap; gap: 1rem; }
+      .submit-btn { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Canvas bg -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Grain -->
+<div class="grain"></div>
+
+<!-- NAV -->
+<nav class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(46,140,56,0.25)" stroke="#46c455" stroke-width="1"/>
+        <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(70,196,85,0.15)"/>
+        <line x1="17" y1="28" x2="17" y2="6" stroke="#46c455" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <path d="M17 16 C20 12 24 14 26 18" stroke="#8de898" stroke-width="0.8" fill="none"/>
+        <path d="M17 20 C14 16 10 18 8 22" stroke="#8de898" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    Nutri-Farm<span class="logo-ai">AI</span>
+  </a>
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      <span id="navStatusText">Nutrition AI · Live</span>
+    </div>
+    <select onchange="changeLanguage(this.value)" class="lang-dropdown">
+      <option value="en">English (US)</option>
+      <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="bn">বাংলা (Bengali)</option>
+      <option value="te">తెలుగు (Telugu)</option>
+      <option value="ta">தமிழ் (Tamil)</option>
+      <option value="mr">मराठी (Marathi)</option>
+      <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      <option value="gu">ગુજરાતી (Gujarati)</option>
+      <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+    </select>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<main class="page-shell">
+
+  <!-- TOP -->
+  <div class="page-top">
+    <div>
+      <div class="badge">
+        <div class="badge-pulse"></div>
+        <span id="heroBadge">Nutrition Architect · AI Powered</span>
+      </div>
+      <h1 class="page-title">
+        <span class="t1" id="heroT1">Sync Your Health.</span>
+        <span class="t2" id="heroT2"> Fuel Your Goals.</span>
+      </h1>
+      <p class="page-sub" id="heroSub">
+        Map your health profile against dietary preferences — our AI engineers a personalized nutrition blueprint with thalis, weekly meal plans, and condition-aware diets.
+      </p>
+    </div>
+    <div class="hero-metrics">
+      <div class="metric"><div class="mv">AI</div><div class="ml">Architect</div></div>
+      <div class="metric-div"></div>
+      <div class="metric"><div class="mv">7</div><div class="ml">Day Plan</div></div>
+      <div class="metric-div"></div>
+      <div class="metric"><div class="mv">9+</div><div class="ml">Languages</div></div>
+    </div>
+  </div>
+
+  <!-- HEALTH PROFILE CARD -->
+  <div class="dashboard-container">
+    <div class="header-bar">
+      <div class="header-left">
+        <div class="chip">
+          <div class="mini-dot"></div>
+          <span id="chipText">HIPAA-Aware · Secure</span>
+        </div>
+        <h2 class="section-title" id="healthTitle">Health Profile</h2>
+      </div>
+    </div>
+
+    <form>
+      <div class="grid-system">
+
+        <div class="group-title">
+          <span id="gt1">Medical &amp; Life Stage</span>
+          <span class="gt-num">01</span>
+        </div>
+
+        <div class="field col-2">
+          <label id="condLabel">Select Health Condition</label>
+          <select id="healthCondition">
+            <option value="none" id="condNone">No condition</option>
+            <option value="diabetes" id="condDia">Diabetes</option>
+            <option value="hypertension" id="condHyp">Hypertension (BP)</option>
+            <option value="anemia" id="condAne">Anemia</option>
+            <option value="thyroid" id="condThy">Thyroid</option>
+          </select>
+        </div>
+        <div class="field col-2">
+          <label id="stageLabel">Life Stage (Optional)</label>
+          <select id="lifeStage">
+            <option value="standard" id="stageStd">Standard</option>
+            <option value="pregnancy" id="stagePreg">Pregnancy</option>
+            <option value="lactation" id="stageLac">Lactation</option>
+          </select>
+        </div>
+
+      </div>
+    </form>
+  </div>
+
+  <!-- DIETARY PREFERENCES CARD -->
+  <div class="dashboard-container">
+    <div class="header-bar">
+      <div class="header-left">
+        <div class="chip gold">
+          <div class="mini-dot"></div>
+          <span id="chipText2">Personalized · Regional</span>
+        </div>
+        <h2 class="section-title" id="dietTitle">Dietary Preferences</h2>
+      </div>
+    </div>
+
+    <form onsubmit="return false;">
+      <div class="grid-system">
+
+        <div class="group-title">
+          <span id="gt2">Taste &amp; Budget Signals</span>
+          <span class="gt-num">02</span>
+        </div>
+
+        <div class="field">
+          <label id="foodLabel">Food Preference</label>
+          <select id="foodPreference">
+            <option value="veg" id="optVeg">Veg</option>
+            <option value="non-veg" id="optNonVeg">Non-Veg</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="allergyLabel">Allergies</label>
+          <input type="text" id="allergies" placeholder="e.g. Gluten, nuts etc.">
+        </div>
+        <div class="field">
+          <label id="mealLabel">Meal Type</label>
+          <select id="mealType">
+            <option value="North Indian" id="mealNI">North Indian</option>
+            <option value="South Indian" id="mealSI">South Indian</option>
+            <option value="Local" id="mealLocal">Local / Regional</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="budgetLabel">Budget Preference</label>
+          <select id="budgetPref">
+            <option value="low" id="budLow">Low</option>
+            <option value="medium" id="budMed">Medium</option>
+            <option value="high" id="budHigh">High</option>
+          </select>
+        </div>
+
+        <div class="output-box">
+          <div class="output-label"><i class="fas fa-sparkles"></i><span id="outLabel">Your Analysis Will Generate</span></div>
+          <div class="output-sub" id="outSub">An AI-crafted blueprint tailored to your profile:</div>
+          <div class="tag-container">
+            <span class="tag"><i class="fas fa-utensils"></i><span id="tag1">Personalized Local Thali</span></span>
+            <span class="tag"><i class="fas fa-calendar-week"></i><span id="tag2">Weekly Meal Plan</span></span>
+            <span class="tag"><i class="fas fa-chart-line"></i><span id="tag3">Nutrition Score</span></span>
+            <span class="tag"><i class="fas fa-heart-pulse"></i><span id="tag4">Condition-Specific Diet</span></span>
+            <span class="tag"><i class="fas fa-coins"></i><span id="tag5">Low-cost Healthy Alternatives</span></span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer-action">
+        <button type="button" class="submit-btn" onclick="handleHealthSubmit(event)">
+          <span id="submitText">Generate Nutrition Dashboard</span>
+          <span class="arr">→</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+  <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Support</a>
+  </div>
+</footer>
+
+<!-- Supabase + your existing script preserved -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+
+<script>
+/* Custom cursor */
+const dot = document.getElementById('cursorDot'), ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+(function loop() {
+  rx += (mx - rx) * 0.14; ry += (my - ry) * 0.14;
+  dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+  requestAnimationFrame(loop);
+})();
+
+/* Particle canvas */
+const canvas = document.getElementById('bgCanvas'), ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W; this.y = Math.random() * H;
+    this.vx = (Math.random() - 0.5) * 0.32; this.vy = (Math.random() - 0.5) * 0.32;
+    this.r = Math.random() * 1.8 + 0.4; this.a = Math.random() * 0.5 + 0.1;
+    this.life = 0; this.maxLife = Math.random() * 400 + 200;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy; this.life++;
+    if (this.x < 0 || this.x > W || this.y < 0 || this.y > H || this.life > this.maxLife) this.reset();
+  }
+  draw() {
+    const f = Math.min(this.life / 40, 1) * Math.min((this.maxLife - this.life) / 40, 1);
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(70,196,85,${this.a * f})`; ctx.fill();
+  }
+}
+for (let i = 0; i < 110; i++) particles.push(new Particle());
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) for (let j = i + 1; j < particles.length; j++) {
+    const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y, d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 100) {
+      ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y);
+      ctx.lineTo(particles[j].x, particles[j].y);
+      ctx.strokeStyle = `rgba(46,140,56,${0.12 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+  }
+}
+function animCanvas() {
+  ctx.clearRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, H * 0.8);
+  g.addColorStop(0, 'rgba(26,90,32,0.07)'); g.addColorStop(0.5, 'rgba(15,32,16,0.03)'); g.addColorStop(1, 'rgba(8,12,8,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  drawLines(); particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animCanvas);
+}
+animCanvas();
+
+/* i18n */
+const i18n = {
+  en: { badge: 'Nutrition Architect · AI Powered', t1: 'Sync Your Health.', t2: ' Fuel Your Goals.', sub: 'Map your health profile against dietary preferences — our AI engineers a personalized nutrition blueprint with thalis, weekly meal plans, and condition-aware diets.', nav: 'Nutrition AI · Live', chip: 'HIPAA-Aware · Secure', chip2: 'Personalized · Regional', healthTitle: 'Health Profile', dietTitle: 'Dietary Preferences', gt1: 'Medical & Life Stage', gt2: 'Taste & Budget Signals', condLabel: 'Select Health Condition', stageLabel: 'Life Stage (Optional)', foodLabel: 'Food Preference', allergyLabel: 'Allergies', mealLabel: 'Meal Type', budgetLabel: 'Budget Preference', outLabel: 'Your Analysis Will Generate', outSub: 'An AI-crafted blueprint tailored to your profile:', tag1: 'Personalized Local Thali', tag2: 'Weekly Meal Plan', tag3: 'Nutrition Score', tag4: 'Condition-Specific Diet', tag5: 'Low-cost Healthy Alternatives', submit: 'Generate Nutrition Dashboard' },
+  or: { badge: 'ନ୍ୟୁଟ୍ରିସନ୍ ଆର୍କିଟେକ୍ଟ୍ · AI', t1: 'ଆପଣଙ୍କ ସ୍ୱାସ୍ଥ୍ୟ ସିଙ୍କ୍ କରନ୍ତୁ.', t2: ' ଲକ୍ଷ୍ୟକୁ ଶକ୍ତି ଦିଅନ୍ତୁ.', sub: 'ଆପଣଙ୍କ ସ୍ୱାସ୍ଥ୍ୟ ଓ ଖାଦ୍ୟ ପସନ୍ଦକୁ AI ରେ ମ୍ୟାପ୍ କରନ୍ତୁ — ବ୍ୟକ୍ତିଗତ ନ୍ୟୁଟ୍ରିସନ୍ ଯୋଜନା ପ୍ରସ୍ତୁତ ହେବ.', nav: 'ନ୍ୟୁଟ୍ରିସନ୍ AI · ଲାଇଭ୍', chip: 'HIPAA ସଚେତନ · ସୁରକ୍ଷିତ', chip2: 'ବ୍ୟକ୍ତିଗତ · ଆଞ୍ଚଳିକ', healthTitle: 'ସ୍ୱାସ୍ଥ୍ୟ ପ୍ରୋଫାଇଲ୍', dietTitle: 'ଖାଦ୍ୟ ପସନ୍ଦ', gt1: 'ମେଡିକାଲ୍ ଓ ଜୀବନ ପର୍ଯ୍ୟାୟ', gt2: 'ସ୍ୱାଦ ଓ ବଜେଟ୍ ସଙ୍କେତ', condLabel: 'ସ୍ୱାସ୍ଥ୍ୟ ଅବସ୍ଥା ବାଛନ୍ତୁ', stageLabel: 'ଜୀବନ ପର୍ଯ୍ୟାୟ (ଐଚ୍ଛିକ)', foodLabel: 'ଖାଦ୍ୟ ପସନ୍ଦ', allergyLabel: 'ଆଲର୍ଜି', mealLabel: 'ଭୋଜନ ପ୍ରକାର', budgetLabel: 'ବଜେଟ୍ ପସନ୍ଦ', outLabel: 'ଆପଣଙ୍କ ବିଶ୍ଳେଷଣ ଉତ୍ପନ୍ନ କରିବ', outSub: 'ଆପଣଙ୍କ ପ୍ରୋଫାଇଲ୍ ପାଇଁ AI ଯୋଜନା:', tag1: 'ବ୍ୟକ୍ତିଗତ ସ୍ଥାନୀୟ ଥାଳି', tag2: 'ସାପ୍ତାହିକ ଭୋଜନ ଯୋଜନା', tag3: 'ନ୍ୟୁଟ୍ରିସନ୍ ସ୍କୋର୍', tag4: 'ଅବସ୍ଥା-ନିର୍ଦ୍ଦିଷ୍ଟ ଡାଏଟ୍', tag5: 'ସୁଲଭ ସୁସ୍ଥ ବିକଳ୍ପ', submit: 'ନ୍ୟୁଟ୍ରିସନ୍ ଡ୍ୟାଶବୋର୍ଡ ସୃଷ୍ଟି କରନ୍ତୁ' },
+  hi: { badge: 'न्यूट्रिशन आर्किटेक्ट · AI', t1: 'स्वास्थ्य सिंक करें।', t2: ' लक्ष्यों को ऊर्जा दें।', sub: 'स्वास्थ्य प्रोफाइल और आहार वरीयताओं को AI से मैप करें — व्यक्तिगत पोषण ब्लूप्रिंट तैयार होगा।', nav: 'न्यूट्रिशन AI · लाइव', chip: 'HIPAA जागरूक · सुरक्षित', chip2: 'वैयक्तिकृत · क्षेत्रीय', healthTitle: 'स्वास्थ्य प्रोफाइल', dietTitle: 'आहार वरीयताएं', gt1: 'मेडिकल व जीवन चरण', gt2: 'स्वाद व बजट संकेत', condLabel: 'स्वास्थ्य स्थिति चुनें', stageLabel: 'जीवन चरण (वैकल्पिक)', foodLabel: 'भोजन प्राथमिकता', allergyLabel: 'एलर्जी', mealLabel: 'भोजन प्रकार', budgetLabel: 'बजट प्राथमिकता', outLabel: 'आपका विश्लेषण देगा', outSub: 'आपकी प्रोफाइल के लिए AI ब्लूप्रिंट:', tag1: 'वैयक्तिकृत स्थानीय थाली', tag2: 'साप्ताहिक भोजन योजना', tag3: 'पोषण स्कोर', tag4: 'स्थिति-विशिष्ट आहार', tag5: 'किफ़ायती स्वस्थ विकल्प', submit: 'न्यूट्रिशन डैशबोर्ड बनाएं' },
+  bn: { badge: 'নিউট্রিশন আর্কিটেক্ট · AI', t1: 'স্বাস্থ্য সিঙ্ক করুন।', t2: ' লক্ষ্যে শক্তি দিন।', sub: 'স্বাস্থ্য প্রোফাইল ও খাদ্য পছন্দ AI দিয়ে ম্যাপ করুন — ব্যক্তিগত পুষ্টি ব্লুপ্রিন্ট তৈরি হবে।', nav: 'নিউট্রিশন AI · লাইভ', chip: 'HIPAA-সচেতন · নিরাপদ', chip2: 'ব্যক্তিগত · আঞ্চলিক', healthTitle: 'স্বাস্থ্য প্রোফাইল', dietTitle: 'খাদ্য পছন্দ', gt1: 'মেডিকেল ও জীবন পর্যায়', gt2: 'স্বাদ ও বাজেট সংকেত', condLabel: 'স্বাস্থ্য অবস্থা নির্বাচন', stageLabel: 'জীবন পর্যায় (ঐচ্ছিক)', foodLabel: 'খাদ্য পছন্দ', allergyLabel: 'অ্যালার্জি', mealLabel: 'খাবারের ধরন', budgetLabel: 'বাজেট পছন্দ', outLabel: 'আপনার বিশ্লেষণ তৈরি করবে', outSub: 'আপনার প্রোফাইলের জন্য AI ব্লুপ্রিন্ট:', tag1: 'ব্যক্তিগত স্থানীয় থালি', tag2: 'সাপ্তাহিক খাবার পরিকল্পনা', tag3: 'পুষ্টি স্কোর', tag4: 'অবস্থা-নির্দিষ্ট ডায়েট', tag5: 'সাশ্রয়ী স্বাস্থ্যকর বিকল্প', submit: 'নিউট্রিশন ড্যাশবোর্ড তৈরি করুন' },
+  te: { badge: 'న్యూట్రిషన్ ఆర్కిటెక్ట్ · AI', t1: 'ఆరోగ్యాన్ని సింక్ చేయండి.', t2: ' లక్ష్యాలకు శక్తినివ్వండి.', sub: 'ఆరోగ్య ప్రొఫైల్ మరియు ఆహార ప్రాధాన్యతలను AI తో మ్యాప్ చేయండి — వ్యక్తిగత పోషణ బ్లూప్రింట్.', nav: 'న్యూట్రిషన్ AI · లైవ్', chip: 'HIPAA-అవేర్ · సురక్షితం', chip2: 'వ్యక్తిగత · ప్రాంతీయ', healthTitle: 'ఆరోగ్య ప్రొఫైల్', dietTitle: 'ఆహార ప్రాధాన్యతలు', gt1: 'మెడికల్ & జీవన దశ', gt2: 'రుచి & బడ్జెట్ సంకేతాలు', condLabel: 'ఆరోగ్య పరిస్థితి ఎంచుకోండి', stageLabel: 'జీవన దశ (ఐచ్ఛికం)', foodLabel: 'ఆహార ప్రాధాన్యత', allergyLabel: 'అలెర్జీలు', mealLabel: 'భోజన రకం', budgetLabel: 'బడ్జెట్ ప్రాధాన్యత', outLabel: 'మీ విశ్లేషణ ఉత్పత్తి చేస్తుంది', outSub: 'మీ ప్రొఫైల్ కోసం AI బ్లూప్రింట్:', tag1: 'వ్యక్తిగత స్థానిక థాలి', tag2: 'వారపు భోజన ప్రణాళిక', tag3: 'పోషణ స్కోర్', tag4: 'పరిస్థితి-నిర్దిష్ట డైట్', tag5: 'తక్కువ ఖర్చు ఆరోగ్య ప్రత్యామ్నాయాలు', submit: 'న్యూట్రిషన్ డాష్‌బోర్డ్ రూపొందించండి' },
+  ta: { badge: 'ஊட்டச்சத்து கட்டிடம் · AI', t1: 'ஆரோக்கியம் சிங்க்.', t2: ' இலக்குகளுக்கு எரிசக்தி.', sub: 'ஆரோக்கிய விவரம் & உணவு விருப்பம் AI மூலம் மேப் — தனிப்பயன் ஊட்டச்சத்து வரைபடம்.', nav: 'ஊட்டச்சத்து AI · நேரடி', chip: 'HIPAA-அறிந்த · பாதுகாப்பு', chip2: 'தனிப்பயன் · பிராந்திய', healthTitle: 'சுகாதார விவரம்', dietTitle: 'உணவு விருப்பம்', gt1: 'மருத்துவம் & வாழ்க்கை நிலை', gt2: 'சுவை & பட்ஜெட்', condLabel: 'சுகாதார நிலை தேர்ந்தெடு', stageLabel: 'வாழ்க்கை நிலை (விருப்பம்)', foodLabel: 'உணவு விருப்பம்', allergyLabel: 'ஒவ்வாமை', mealLabel: 'உணவு வகை', budgetLabel: 'பட்ஜெட் விருப்பம்', outLabel: 'உங்கள் ஆய்வு உருவாக்கும்', outSub: 'உங்கள் சுயவிவரத்திற்கான AI வரைபடம்:', tag1: 'தனிப்பயன் உள்ளூர் தாலி', tag2: 'வார உணவு திட்டம்', tag3: 'ஊட்டச்சத்து மதிப்பெண்', tag4: 'நிலை-குறிப்பிட்ட டயட்', tag5: 'மலிவு ஆரோக்கிய மாற்றுகள்', submit: 'ஊட்டச்சத்து டாஷ்போர்டு உருவாக்கு' },
+  mr: { badge: 'न्यूट्रिशन आर्किटेक्ट · AI', t1: 'आरोग्य सिंक करा.', t2: ' ध्येयांना ऊर्जा द्या.', sub: 'आरोग्य प्रोफाइल व आहार पसंती AI ने मॅप करा — वैयक्तिक पोषण ब्लूप्रिंट.', nav: 'न्यूट्रिशन AI · थेट', chip: 'HIPAA-जागरूक · सुरक्षित', chip2: 'वैयक्तिक · प्रादेशिक', healthTitle: 'आरोग्य प्रोफाइल', dietTitle: 'आहार पसंती', gt1: 'मेडिकल व जीवन टप्पा', gt2: 'चव व बजेट संकेत', condLabel: 'आरोग्य स्थिती निवडा', stageLabel: 'जीवन टप्पा (पर्यायी)', foodLabel: 'आहार पसंती', allergyLabel: 'ऍलर्जी', mealLabel: 'जेवण प्रकार', budgetLabel: 'बजेट पसंती', outLabel: 'तुमचे विश्लेषण तयार करेल', outSub: 'तुमच्या प्रोफाइलसाठी AI ब्लूप्रिंट:', tag1: 'वैयक्तिक स्थानिक थाळी', tag2: 'साप्ताहिक जेवण योजना', tag3: 'पोषण स्कोर', tag4: 'स्थिती-विशिष्ट आहार', tag5: 'किफायती आरोग्यदायी पर्याय', submit: 'न्यूट्रिशन डॅशबोर्ड तयार करा' },
+  kn: { badge: 'ನ್ಯೂಟ್ರಿಷನ್ ಆರ್ಕಿಟೆಕ್ಟ್ · AI', t1: 'ಆರೋಗ್ಯ ಸಿಂಕ್ ಮಾಡಿ.', t2: ' ಗುರಿಗಳಿಗೆ ಶಕ್ತಿ ನೀಡಿ.', sub: 'ಆರೋಗ್ಯ ಪ್ರೊಫೈಲ್ ಮತ್ತು ಆಹಾರ ಆದ್ಯತೆಗಳನ್ನು AI ನೊಂದಿಗೆ ಮ್ಯಾಪ್ ಮಾಡಿ.', nav: 'ನ್ಯೂಟ್ರಿಷನ್ AI · ಲೈವ್', chip: 'HIPAA-ತಿಳಿದ · ಸುರಕ್ಷಿತ', chip2: 'ವೈಯಕ್ತಿಕ · ಪ್ರಾದೇಶಿಕ', healthTitle: 'ಆರೋಗ್ಯ ಪ್ರೊಫೈಲ್', dietTitle: 'ಆಹಾರ ಆದ್ಯತೆಗಳು', gt1: 'ವೈದ್ಯಕೀಯ & ಜೀವನ ಹಂತ', gt2: 'ರುಚಿ & ಬಜೆಟ್ ಸಂಕೇತಗಳು', condLabel: 'ಆರೋಗ್ಯ ಸ್ಥಿತಿ ಆಯ್ಕೆ', stageLabel: 'ಜೀವನ ಹಂತ (ಐಚ್ಛಿಕ)', foodLabel: 'ಆಹಾರ ಆದ್ಯತೆ', allergyLabel: 'ಅಲರ್ಜಿಗಳು', mealLabel: 'ಊಟದ ಪ್ರಕಾರ', budgetLabel: 'ಬಜೆಟ್ ಆದ್ಯತೆ', outLabel: 'ನಿಮ್ಮ ವಿಶ್ಲೇಷಣೆ ಉತ್ಪಾದಿಸುತ್ತದೆ', outSub: 'ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಗಾಗಿ AI ಬ್ಲೂಪ್ರಿಂಟ್:', tag1: 'ವೈಯಕ್ತಿಕ ಸ್ಥಳೀಯ ಥಾಲಿ', tag2: 'ವಾರದ ಊಟ ಯೋಜನೆ', tag3: 'ಪೋಷಣಾ ಸ್ಕೋರ್', tag4: 'ಸ್ಥಿತಿ-ನಿರ್ದಿಷ್ಟ ಡಯೆಟ್', tag5: 'ಕಡಿಮೆ ವೆಚ್ಚದ ಆರೋಗ್ಯಕರ ಪರ್ಯಾಯಗಳು', submit: 'ನ್ಯೂಟ್ರಿಷನ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ರಚಿಸಿ' },
+  gu: { badge: 'ન્યુટ્રિશન આર્કિટેક્ટ · AI', t1: 'આરોગ્ય સિંક કરો.', t2: ' લક્ષ્યોને ઊર્જા આપો.', sub: 'આરોગ્ય પ્રોફાઇલ અને આહાર પસંદગીઓને AI સાથે મેપ કરો — વ્યક્તિગત પોષણ બ્લૂપ્રિન્ટ.', nav: 'ન્યુટ્રિશન AI · લાઈવ', chip: 'HIPAA-જાગૃત · સુરક્ષિત', chip2: 'વ્યક્તિગત · પ્રાદેશિક', healthTitle: 'આરોગ્ય પ્રોફાઇલ', dietTitle: 'આહાર પસંદગીઓ', gt1: 'મેડિકલ અને જીવન તબક્કો', gt2: 'સ્વાદ અને બજેટ સંકેત', condLabel: 'આરોગ્ય સ્થિતિ પસંદ કરો', stageLabel: 'જીવન તબક્કો (વૈકલ્પિક)', foodLabel: 'ખોરાક પસંદગી', allergyLabel: 'એલર્જી', mealLabel: 'ભોજન પ્રકાર', budgetLabel: 'બજેટ પસંદગી', outLabel: 'તમારું વિશ્લેષણ જનરેટ કરશે', outSub: 'તમારી પ્રોફાઇલ માટે AI બ્લૂપ્રિન્ટ:', tag1: 'વ્યક્તિગત સ્થાનિક થાળી', tag2: 'સાપ્તાહિક ભોજન યોજના', tag3: 'પોષણ સ્કોર', tag4: 'સ્થિતિ-વિશિષ્ટ આહાર', tag5: 'સસ્તા આરોગ્યપ્રદ વિકલ્પો', submit: 'ન્યુટ્રિશન ડેશબોર્ડ બનાવો' },
+  pa: { badge: 'ਨਿਊਟ੍ਰੀਸ਼ਨ ਆਰਕੀਟੈਕਟ · AI', t1: 'ਸਿਹਤ ਸਿੰਕ ਕਰੋ।', t2: ' ਟੀਚਿਆਂ ਨੂੰ ਊਰਜਾ ਦਿਓ।', sub: 'ਸਿਹਤ ਪ੍ਰੋਫਾਈਲ ਤੇ ਖੁਰਾਕ ਤਰਜੀਹ AI ਨਾਲ ਮੈਪ ਕਰੋ — ਨਿੱਜੀ ਪੋਸ਼ਣ ਬਲੂਪ੍ਰਿੰਟ।', nav: 'ਨਿਊਟ੍ਰੀਸ਼ਨ AI · ਲਾਈਵ', chip: 'HIPAA-ਜਾਣੂ · ਸੁਰੱਖਿਅਤ', chip2: 'ਨਿੱਜੀ · ਖੇਤਰੀ', healthTitle: 'ਸਿਹਤ ਪ੍ਰੋਫਾਈਲ', dietTitle: 'ਖੁਰਾਕ ਤਰਜੀਹ', gt1: 'ਮੈਡੀਕਲ ਤੇ ਜੀਵਨ ਪੜਾਅ', gt2: 'ਸੁਆਦ ਤੇ ਬਜਟ ਸੰਕੇਤ', condLabel: 'ਸਿਹਤ ਸਥਿਤੀ ਚੁਣੋ', stageLabel: 'ਜੀਵਨ ਪੜਾਅ (ਵਿਕਲਪਿਕ)', foodLabel: 'ਖੁਰਾਕ ਤਰਜੀਹ', allergyLabel: 'ਐਲਰਜੀ', mealLabel: 'ਖਾਣੇ ਦੀ ਕਿਸਮ', budgetLabel: 'ਬਜਟ ਤਰਜੀਹ', outLabel: 'ਤੁਹਾਡਾ ਵਿਸ਼ਲੇਸ਼ਣ ਬਣਾਏਗਾ', outSub: 'ਤੁਹਾਡੇ ਪ੍ਰੋਫਾਈਲ ਲਈ AI ਬਲੂਪ੍ਰਿੰਟ:', tag1: 'ਨਿੱਜੀ ਸਥਾਨਕ ਥਾਲੀ', tag2: 'ਹਫ਼ਤਾਵਾਰੀ ਖੁਰਾਕ ਯੋਜਨਾ', tag3: 'ਪੋਸ਼ਣ ਸਕੋਰ', tag4: 'ਸਥਿਤੀ-ਵਿਸ਼ੇਸ਼ ਖੁਰਾਕ', tag5: 'ਸਸਤੇ ਸਿਹਤਮੰਦ ਬਦਲ', submit: 'ਨਿਊਟ੍ਰੀਸ਼ਨ ਡੈਸ਼ਬੋਰਡ ਬਣਾਓ' }
+};
+
+const __origHealth = (typeof window.changeLanguage === 'function') ? window.changeLanguage : null;
+window.changeLanguage = function(lang) {
+  const d = i18n[lang] || i18n.en;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && typeof v === 'string') el.textContent = v; };
+  set('heroBadge', d.badge); set('heroT1', d.t1); set('heroT2', d.t2); set('heroSub', d.sub);
+  set('navStatusText', d.nav); set('chipText', d.chip); set('chipText2', d.chip2);
+  set('healthTitle', d.healthTitle); set('dietTitle', d.dietTitle);
+  set('gt1', d.gt1); set('gt2', d.gt2);
+  set('condLabel', d.condLabel); set('stageLabel', d.stageLabel);
+  set('foodLabel', d.foodLabel); set('allergyLabel', d.allergyLabel);
+  set('mealLabel', d.mealLabel); set('budgetLabel', d.budgetLabel);
+  set('outLabel', d.outLabel); set('outSub', d.outSub);
+  set('tag1', d.tag1); set('tag2', d.tag2); set('tag3', d.tag3);
+  set('tag4', d.tag4); set('tag5', d.tag5);
+  set('submitText', d.submit);
+  try { __origHealth && __origHealth(lang); } catch(e) {}
+};
+window.changeLanguage('en');
+</script>
+</body>
+</html>

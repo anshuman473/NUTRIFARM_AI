@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nutrition Dashboard | Nutri-FarmAI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black:  #080c08;
+      --g1:     #0f2010;
+      --g2:     #1a3a1f;
+      --g4:     #2e8c38;
+      --g5:     #46c455;
+      --g6:     #8de898;
+      --gold:   #d4a83a;
+      --gold2:  #f0cc70;
+      --cream:  #f5f0e8;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      background: var(--black);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+      position: relative;
+    }
+
+    /* CURSOR */
+    .cursor-dot {
+      position: fixed; top: 0; left: 0; width: 8px; height: 8px;
+      background: var(--g5); border-radius: 50%;
+      pointer-events: none; z-index: 10001;
+      transform: translate(-50%, -50%);
+    }
+    .cursor-ring {
+      position: fixed; top: 0; left: 0; width: 36px; height: 36px;
+      border: 1.5px solid rgba(70,196,85,0.5); border-radius: 50%;
+      pointer-events: none; z-index: 10000;
+      transform: translate(-50%, -50%);
+      transition: width .2s, height .2s, border-color .2s;
+    }
+    body:has(button:hover) .cursor-ring,
+    body:has(select:hover) .cursor-ring,
+    body:has(.day-card:hover) .cursor-ring,
+    body:has(.alt-tag:hover) .cursor-ring { width: 60px; height: 60px; border-color: var(--g5); }
+
+    /* CANVAS + GRAIN */
+    #bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .grain {
+      position: fixed; inset: -50%; width: 200%; height: 200%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025; pointer-events: none; z-index: 1;
+      animation: grainShift .5s steps(2) infinite;
+    }
+    @keyframes grainShift {
+      0%{transform:translate(0,0);} 25%{transform:translate(-2%,-1%);}
+      50%{transform:translate(1%,2%);} 75%{transform:translate(2%,-2%);} 100%{transform:translate(0,0);}
+    }
+
+    /* NAV */
+    .navbar {
+      position: relative; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.4rem 3.5rem;
+      border-bottom: 1px solid rgba(70,196,85,0.08);
+      animation: fadeSlideDown .7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes fadeSlideDown {
+      from{opacity:0;transform:translateY(-24px);} to{opacity:1;transform:translateY(0);}
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--cream);
+    }
+    .logo-mark svg { width: 34px; height: 34px; }
+    .logo-ai { color: var(--gold); }
+    .nav-right { display: flex; align-items: center; gap: 1.2rem; }
+    .nav-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.72rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(245,240,232,0.4);
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--g5); box-shadow: 0 0 8px var(--g5);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+    .lang-dropdown {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(70,196,85,0.15);
+      color: var(--cream);
+      padding: 0.45rem 2rem 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.82rem;
+      cursor: none; outline: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      transition: border-color .2s, background-color .2s;
+    }
+    .lang-dropdown:hover { border-color: rgba(70,196,85,0.35); background-color: rgba(70,196,85,0.05); }
+    .lang-dropdown option { background: #0f2010; }
+
+    .logout-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 0.5rem 1.1rem;
+      background: rgba(212,168,58,0.08);
+      border: 1px solid rgba(212,168,58,0.3);
+      color: var(--gold);
+      border-radius: 8px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: none; transition: all .25s;
+    }
+    .logout-btn:hover { background: rgba(212,168,58,0.15); border-color: var(--gold); }
+
+    /* PAGE SHELL */
+    .page-shell {
+      position: relative; z-index: 10;
+      padding: 2.5rem 3.5rem 4rem;
+      animation: fadeUp .9s cubic-bezier(0.16,1,0.3,1) .15s both;
+    }
+    @keyframes fadeUp {
+      from{opacity:0;transform:translateY(40px);} to{opacity:1;transform:translateY(0);}
+    }
+
+    /* WELCOME HEADER */
+    .welcome-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--gold);
+      border: 1px solid rgba(212,168,58,0.3);
+      background: rgba(212,168,58,0.07);
+      padding: 0.35rem 0.9rem; border-radius: 4px;
+      width: fit-content; margin-bottom: 0.9rem;
+    }
+    .badge-pulse { width: 5px; height: 5px; border-radius: 50%;
+      background: var(--gold); animation: blink 1.5s ease-in-out infinite; }
+    .welcome-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 800; line-height: 1; letter-spacing: -0.04em;
+      color: var(--cream);
+    }
+    .welcome-title .name-highlight {
+      background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; background-size: 200%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:0%;} 100%{background-position:200%;} }
+    .welcome-sub {
+      margin-top: .6rem; font-size: 0.9rem; font-weight: 300;
+      color: rgba(245,240,232,0.45); line-height: 1.6;
+    }
+    .header-stats { display: flex; align-items: flex-end; gap: 1.5rem; }
+    .hstat { text-align: right; }
+    .hstat .sv {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      color: var(--g5); line-height: 1; letter-spacing: -.04em;
+    }
+    .hstat .sl {
+      font-size: 0.62rem; text-transform: uppercase;
+      letter-spacing: 0.12em; color: rgba(245,240,232,0.28); margin-top: 3px;
+    }
+    .hstat-div { width: 1px; height: 32px; background: rgba(70,196,85,0.15); }
+
+    /* GLASS CARD */
+    .glass-card {
+      position: relative;
+      background: rgba(15,32,16,0.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(70,196,85,0.12);
+      border-top: 2px solid rgba(70,196,85,0.25);
+      border-radius: 20px;
+      padding: 2rem 2.25rem;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45),
+                  0 0 0 1px rgba(70,196,85,0.04),
+                  0 0 60px rgba(70,196,85,0.06) inset;
+    }
+    .glass-card::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% -20%, rgba(70,196,85,0.1), transparent 60%);
+      pointer-events: none;
+    }
+    .glass-card::after {
+      content: ""; position: absolute; top: 0; left: 0;
+      height: 2px; width: 100%;
+      background: linear-gradient(90deg, transparent, var(--g5), var(--gold), transparent);
+      opacity: .5;
+    }
+    .glass-card.gold-top::after {
+      background: linear-gradient(90deg, transparent, var(--gold), var(--gold2), transparent);
+    }
+
+    /* CHIP */
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--g5);
+      background: rgba(70,196,85,0.08);
+      border: 1px solid rgba(70,196,85,0.18);
+      border-radius: 30px;
+      padding: 5px 12px; margin-bottom: 1.25rem;
+    }
+    .chip .mini-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--g5); box-shadow: 0 0 6px var(--g5);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+    .chip.gold { color: var(--gold); background: rgba(212,168,58,0.08); border-color: rgba(212,168,58,0.25); }
+    .chip.gold .mini-dot { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      letter-spacing: 0.04em; color: var(--cream);
+      text-transform: uppercase; margin-bottom: 1.5rem;
+    }
+
+    /* HERO SCORE ROW */
+    .hero-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 2.5rem;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    /* SVG SCORE RING */
+    .score-ring-wrap {
+      position: relative;
+      width: 130px; height: 130px;
+      flex-shrink: 0;
+    }
+    .score-ring-wrap svg { transform: rotate(-90deg); }
+    .score-ring-bg { fill: none; stroke: rgba(70,196,85,0.12); stroke-width: 8; }
+    .score-ring-fill {
+      fill: none; stroke: var(--g5); stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 339;
+      stroke-dashoffset: 339;
+      transition: stroke-dashoffset 1.8s cubic-bezier(0.16,1,0.3,1);
+      filter: drop-shadow(0 0 8px var(--g5));
+    }
+    .score-ring-text {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .score-ring-text .sv {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem; font-weight: 800;
+      color: var(--g5); line-height: 1; letter-spacing: -0.04em;
+    }
+    .score-ring-text .sl {
+      font-size: 0.6rem; text-transform: uppercase;
+      letter-spacing: 0.12em; color: rgba(245,240,232,0.3); margin-top: 2px;
+    }
+
+    /* THALI INFO */
+    .thali-info { flex: 1; }
+    .condition-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: rgba(70,196,85,0.12);
+      border: 1px solid rgba(70,196,85,0.3);
+      color: var(--g6);
+      padding: 5px 14px; border-radius: 30px;
+      margin-bottom: 0.9rem;
+    }
+    .thali-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+      color: var(--cream); margin-bottom: 0.6rem; line-height: 1.1;
+    }
+    .thali-desc {
+      font-size: 0.88rem; font-weight: 300;
+      color: rgba(245,240,232,0.5); line-height: 1.7;
+    }
+
+    /* NUTRIENTS ROW */
+    .nutrients-row {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      margin-top: 1.2rem; padding-top: 1.2rem;
+      border-top: 1px solid rgba(70,196,85,0.1);
+    }
+    .nutrient-pill {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(8,12,8,0.5);
+      border: 1px solid rgba(70,196,85,0.15);
+      border-radius: 12px;
+      padding: 10px 16px; flex: 1; min-width: 80px;
+    }
+    .nutrient-pill .nv {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem; font-weight: 800;
+      color: var(--g5); line-height: 1;
+    }
+    .nutrient-pill .nl {
+      font-size: 0.6rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: rgba(245,240,232,0.3); margin-top: 4px;
+    }
+
+    /* TWO-COL GRID */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+
+    /* WEEK PLAN */
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 0.25rem;
+    }
+    .day-card {
+      background: rgba(8,12,8,0.5);
+      border: 1px solid rgba(70,196,85,0.12);
+      border-radius: 12px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all .3s ease;
+      cursor: none;
+    }
+    .day-card:hover {
+      border-color: var(--g5);
+      background: rgba(70,196,85,0.07);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(70,196,85,0.15);
+    }
+    .day-card.active {
+      border-color: var(--g5);
+      background: rgba(70,196,85,0.1);
+      box-shadow: 0 0 0 1px rgba(70,196,85,0.2);
+    }
+    .day-label {
+      font-size: 0.55rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--gold);
+      font-weight: 700; margin-bottom: 6px;
+    }
+    .day-meal {
+      font-size: 0.7rem; color: rgba(245,240,232,0.65);
+      line-height: 1.35; font-weight: 400;
+    }
+    .day-icon { font-size: 1.1rem; margin-bottom: 5px; display: block; }
+
+    /* ALTERNATIVES */
+    .alt-grid {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-top: 0.25rem;
+    }
+    .alt-tag {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 9px 16px;
+      background: rgba(8,12,8,0.5);
+      border: 1px solid rgba(212,168,58,0.2);
+      color: rgba(245,240,232,0.75);
+      border-radius: 12px;
+      font-size: 0.78rem; font-weight: 500;
+      cursor: none; transition: all .3s;
+    }
+    .alt-tag i { color: var(--gold); font-size: 0.75rem; }
+    .alt-tag .alt-price {
+      font-size: 0.6rem; color: var(--g5);
+      background: rgba(70,196,85,0.1);
+      border: 1px solid rgba(70,196,85,0.2);
+      padding: 2px 7px; border-radius: 20px;
+      font-weight: 700; letter-spacing: 0.06em;
+    }
+    .alt-tag:hover {
+      border-color: var(--gold);
+      background: rgba(212,168,58,0.06);
+      color: var(--cream); transform: translateY(-2px);
+    }
+
+    /* TIPS CARD */
+    .tips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 0.25rem; }
+    .tip-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px;
+      background: rgba(8,12,8,0.4);
+      border: 1px solid rgba(70,196,85,0.1);
+      border-radius: 12px;
+    }
+    .tip-icon {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: rgba(70,196,85,0.1);
+      border: 1px solid rgba(70,196,85,0.2);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+    }
+    .tip-text { font-size: 0.78rem; color: rgba(245,240,232,0.55); line-height: 1.5; }
+    .tip-text strong { color: var(--cream); font-weight: 600; display: block; margin-bottom: 2px; }
+
+    /* GROUP TITLE */
+    .group-title {
+      display: flex; align-items: center; gap: 12px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.14em; color: var(--gold);
+      text-transform: uppercase; margin-bottom: 1.1rem;
+    }
+    .group-title::before {
+      content: "";
+      width: 24px; height: 1px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+    }
+
+    /* SECTION DIVIDER */
+    .section-gap { margin-bottom: 1.5rem; }
+
+    /* FOOTER */
+    .footer {
+      position: relative; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.3rem 3.5rem;
+      border-top: 1px solid rgba(70,196,85,0.07);
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 800; letter-spacing: -0.02em;
+      color: rgba(245,240,232,0.3);
+    }
+    .footer-copy { font-size: 0.72rem; color: rgba(245,240,232,0.2); letter-spacing: 0.06em; }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-link {
+      font-size: 0.72rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: rgba(245,240,232,0.2);
+      text-decoration: none; transition: color .2s;
+    }
+    .footer-link:hover { color: var(--g5); }
+
+    /* LOADING OVERLAY */
+    .loading-overlay {
+      position: fixed; inset: 0; z-index: 9000;
+      background: var(--black);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1.5rem;
+      transition: opacity .5s;
+    }
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .loading-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em;
+    }
+    .loading-logo span { color: var(--gold); }
+    .loading-bar-wrap {
+      width: 200px; height: 2px;
+      background: rgba(70,196,85,0.15);
+      border-radius: 2px; overflow: hidden;
+    }
+    .loading-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+      border-radius: 2px;
+      animation: loadBar 1.2s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    @keyframes loadBar { to { width: 100%; } }
+    .loading-text {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
+      color: rgba(245,240,232,0.35);
+      animation: fadeUp .6s .2s both;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .navbar { padding: 1.2rem 1.5rem; }
+      .page-shell { padding: 1.5rem; }
+      .welcome-header { grid-template-columns: 1fr; }
+      .header-stats { justify-content: flex-start; }
+      .two-col { grid-template-columns: 1fr; }
+      .week-grid { grid-template-columns: repeat(4, 1fr); }
+      .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
+    }
+    @media (max-width: 640px) {
+      body { cursor: auto; }
+      .cursor-dot, .cursor-ring { display: none; }
+      .hero-row { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+      .condition-badge { margin: 0 auto 0.9rem; }
+      .nutrients-row { justify-content: center; }
+      .week-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .tips-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-logo">Nutri-Farm<span>AI</span></div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+  <div class="loading-text">Preparing your nutrition blueprint...</div>
+</div>
+
+<!-- Cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Canvas bg -->
+<canvas id="bgCanvas"></canvas>
+<div class="grain"></div>
+
+<!-- NAV -->
+<nav class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(46,140,56,0.25)" stroke="#46c455" stroke-width="1"/>
+        <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(70,196,85,0.15)"/>
+        <line x1="17" y1="28" x2="17" y2="6" stroke="#46c455" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <path d="M17 16 C20 12 24 14 26 18" stroke="#8de898" stroke-width="0.8" fill="none"/>
+        <path d="M17 20 C14 16 10 18 8 22" stroke="#8de898" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    Nutri-Farm<span class="logo-ai">AI</span>
+  </a>
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      <span id="navStatusText">Dashboard · Live</span>
+    </div>
+    <select onchange="changeLanguage(this.value)" class="lang-dropdown" id="langSelect">
+      <option value="en">English (US)</option>
+      <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="bn">বাংলা (Bengali)</option>
+      <option value="te">తెలుగు (Telugu)</option>
+      <option value="ta">தமிழ் (Tamil)</option>
+      <option value="mr">मराठी (Marathi)</option>
+      <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      <option value="gu">ગુજરાતી (Gujarati)</option>
+      <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+    </select>
+    <button class="logout-btn" onclick="logout()">
+      <i class="fas fa-right-from-bracket"></i>
+      <span id="logoutText">Logout</span>
+    </button>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<main class="page-shell">
+
+  <!-- WELCOME HEADER -->
+  <div class="welcome-header">
+    <div>
+      <div class="badge">
+        <div class="badge-pulse"></div>
+        <span id="badgeText">Your Nutrition Blueprint · AI Generated</span>
+      </div>
+      <h1 class="welcome-title">
+        <span id="welcomePrefix">Welcome back,</span><br>
+        <span class="name-highlight" id="welcomeUser">Nutritionist</span>
+      </h1>
+      <p class="welcome-sub" id="welcomeSub">Your personalized diet plan is ready — crafted around your health profile and dietary preferences.</p>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="sv" id="statScore">--</div><div class="sl" id="statScoreLabel">Nutri Score</div></div>
+      <div class="hstat-div"></div>
+      <div class="hstat"><div class="sv">7</div><div class="sl" id="statDayLabel">Day Plan</div></div>
+      <div class="hstat-div"></div>
+      <div class="hstat"><div class="sv" id="statCal">--</div><div class="sl" id="statCalLabel">Daily Kcal</div></div>
+    </div>
+  </div>
+
+  <!-- HERO THALI CARD -->
+  <div class="glass-card section-gap">
+    <div class="chip">
+      <div class="mini-dot"></div>
+      <span id="chipThali">AI-Crafted Thali · Condition Aware</span>
+    </div>
+    <div class="hero-row">
+      <!-- Score Ring -->
+      <div class="score-ring-wrap">
+        <svg width="130" height="130" viewBox="0 0 120 120">
+          <circle class="score-ring-bg" cx="60" cy="60" r="54"/>
+          <circle class="score-ring-fill" id="scoreRingFill" cx="60" cy="60" r="54"/>
+        </svg>
+        <div class="score-ring-text">
+          <div class="sv" id="nutriScore">--</div>
+          <div class="sl" id="scoreLabel">Score</div>
+        </div>
+      </div>
+      <!-- Thali Info -->
+      <div class="thali-info">
+        <div class="condition-badge">
+          <i class="fas fa-heart-pulse"></i>
+          <span id="healthTag">Analyzing Profile...</span>
+        </div>
+        <div class="thali-name" id="thaliName">🍽️ Your Optimized Local Thali</div>
+        <div class="thali-desc" id="thaliDetails">Curating the best regional meal combinations tailored to your health condition, preferences, and budget...</div>
+        <div class="nutrients-row" id="nutrientsRow">
+          <div class="nutrient-pill"><div class="nv" id="nCarbs">--g</div><div class="nl" id="nCarbsL">Carbs</div></div>
+          <div class="nutrient-pill"><div class="nv" id="nProtein">--g</div><div class="nl" id="nProteinL">Protein</div></div>
+          <div class="nutrient-pill"><div class="nv" id="nFats">--g</div><div class="nl" id="nFatsL">Fats</div></div>
+          <div class="nutrient-pill"><div class="nv" id="nFiber">--g</div><div class="nl" id="nFiberL">Fiber</div></div>
+          <div class="nutrient-pill"><div class="nv" id="nKcal">--</div><div class="nl" id="nKcalL">Kcal</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEKLY PLAN + ALTERNATIVES -->
+  <div class="two-col section-gap">
+
+    <!-- Weekly Meal Plan -->
+    <div class="glass-card">
+      <div class="chip gold">
+        <div class="mini-dot"></div>
+        <span id="chipWeek">Weekly Blueprint</span>
+      </div>
+      <div class="group-title" id="gtWeek">7-Day Meal Rotation</div>
+      <div class="week-grid" id="weekGrid">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <!-- Low-Cost Alternatives -->
+    <div class="glass-card gold-top">
+      <div class="chip gold">
+        <div class="mini-dot"></div>
+        <span id="chipAlt">Budget Smart · Nutritious</span>
+      </div>
+      <div class="group-title" id="gtAlt">Low-Cost Healthy Alternatives</div>
+      <div class="alt-grid" id="alternatives">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- HEALTH TIPS -->
+  <div class="glass-card">
+    <div class="chip">
+      <div class="mini-dot"></div>
+      <span id="chipTips">Condition-Specific Guidance</span>
+    </div>
+    <div class="group-title" id="gtTips">Personalized Health Tips</div>
+    <div class="tips-grid" id="tipsGrid">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+  <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Support</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+<script>
+/* ─── CURSOR ─── */
+const dot = document.getElementById('cursorDot'), ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+(function loop() {
+  rx += (mx - rx) * 0.14; ry += (my - ry) * 0.14;
+  dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+  requestAnimationFrame(loop);
+})();
+
+/* ─── PARTICLE CANVAS ─── */
+const canvas = document.getElementById('bgCanvas'), ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W; this.y = Math.random() * H;
+    this.vx = (Math.random() - 0.5) * 0.32; this.vy = (Math.random() - 0.5) * 0.32;
+    this.r = Math.random() * 1.8 + 0.4; this.a = Math.random() * 0.5 + 0.1;
+    this.life = 0; this.maxLife = Math.random() * 400 + 200;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy; this.life++;
+    if (this.x < 0 || this.x > W || this.y < 0 || this.y > H || this.life > this.maxLife) this.reset();
+  }
+  draw() {
+    const f = Math.min(this.life / 40, 1) * Math.min((this.maxLife - this.life) / 40, 1);
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(70,196,85,${this.a * f})`; ctx.fill();
+  }
+}
+for (let i = 0; i < 110; i++) particles.push(new Particle());
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) for (let j = i + 1; j < particles.length; j++) {
+    const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y, d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 100) {
+      ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y);
+      ctx.lineTo(particles[j].x, particles[j].y);
+      ctx.strokeStyle = `rgba(46,140,56,${0.12 * (1 - d / 100)})`; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+  }
+}
+function animCanvas() {
+  ctx.clearRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, H * 0.8);
+  g.addColorStop(0, 'rgba(26,90,32,0.07)'); g.addColorStop(0.5, 'rgba(15,32,16,0.03)'); g.addColorStop(1, 'rgba(8,12,8,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  drawLines(); particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animCanvas);
+}
+animCanvas();
+
+/* ─── SCORE RING ANIMATION ─── */
+function animateScore(scoreStr) {
+  const num = parseInt(scoreStr);
+  if (isNaN(num)) return;
+  const circumference = 2 * Math.PI * 54;
+  const offset = circumference * (1 - num / 100);
+  document.getElementById('scoreRingFill').style.strokeDashoffset = offset;
+  document.getElementById('nutriScore').textContent = scoreStr;
+  document.getElementById('statScore').textContent = scoreStr;
+}
+
+/* ─── NUTRITION DATA PER CONDITION ─── */
+const conditionData = {
+  none: {
+    score: '88%', tag: 'General Balance', thaliName: '🌿 Balanced Wholesome Thali',
+    thaliDesc: 'A well-rounded thali with rice, dal, sabzi, roti, curd, and seasonal salad — covering all macro & micronutrients for your daily needs.',
+    carbs: '65g', protein: '22g', fats: '18g', fiber: '12g', kcal: '520',
+    days: [
+      { icon: '🌅', label: 'Mon', meal: 'Poha\n+ Banana' },
+      { icon: '🍛', label: 'Tue', meal: 'Dal Rice\n+ Sabzi' },
+      { icon: '🫓', label: 'Wed', meal: 'Roti\n+ Paneer' },
+      { icon: '🍲', label: 'Thu', meal: 'Khichdi\n+ Raita' },
+      { icon: '🥗', label: 'Fri', meal: 'Upma\n+ Fruits' },
+      { icon: '🍱', label: 'Sat', meal: 'Thali\n+ Curd' },
+      { icon: '🌾', label: 'Sun', meal: 'Pongal\n+ Sambhar' }
+    ],
+    alts: [
+      { icon: 'fa-seedling', label: 'Brown Rice', price: '₹40/kg' },
+      { icon: 'fa-leaf', label: 'Spinach Dal', price: '₹15/bunch' },
+      { icon: 'fa-egg', label: 'Boiled Eggs', price: '₹7/each' },
+      { icon: 'fa-wheat-awn', label: 'Millets', price: '₹60/kg' },
+      { icon: 'fa-apple-whole', label: 'Seasonal Fruit', price: '₹20/kg' },
+      { icon: 'fa-droplet', label: 'Buttermilk', price: '₹5/cup' }
+    ],
+    tips: [
+      { icon: '💧', title: 'Hydration', text: 'Drink 8–10 glasses of water daily. Start mornings with warm lemon water.' },
+      { icon: '⏰', title: 'Meal Timing', text: 'Eat every 3–4 hours. Avoid skipping breakfast for sustained energy.' },
+      { icon: '🌿', title: 'Greens Daily', text: 'Include at least one dark leafy green per day — spinach, fenugreek, or drumstick leaves.' },
+      { icon: '🏃', title: 'Light Activity', text: '30 mins of walking after meals aids digestion and maintains healthy weight.' }
+    ]
+  },
+  diabetes: {
+    score: '91%', tag: 'Diabetes-Optimized', thaliName: '🩺 Low-GI Diabetic Thali',
+    thaliDesc: 'Low glycemic index foods — bajra roti, bitter gourd sabzi, moong dal, raw salad and curd — designed to regulate blood sugar and insulin response.',
+    carbs: '45g', protein: '28g', fats: '16g', fiber: '18g', kcal: '440',
+    days: [
+      { icon: '🌅', label: 'Mon', meal: 'Oats\n+ Nuts' },
+      { icon: '🫘', label: 'Tue', meal: 'Moong Dal\n+ Salad' },
+      { icon: '🫓', label: 'Wed', meal: 'Bajra Roti\n+ Karela' },
+      { icon: '🥦', label: 'Thu', meal: 'Veggie\nKhichdi' },
+      { icon: '🌾', label: 'Fri', meal: 'Ragi\n+ Curd' },
+      { icon: '🥗', label: 'Sat', meal: 'Sprouts\n+ Soup' },
+      { icon: '🍲', label: 'Sun', meal: 'Mixed\nDal Rice' }
+    ],
+    alts: [
+      { icon: 'fa-seedling', label: 'Ragi / Bajra', price: '₹55/kg' },
+      { icon: 'fa-leaf', label: 'Bitter Gourd', price: '₹30/kg' },
+      { icon: 'fa-wheat-awn', label: 'Barley', price: '₹45/kg' },
+      { icon: 'fa-circle-dot', label: 'Moong Sprouts', price: '₹20/kg' },
+      { icon: 'fa-apple-whole', label: 'Guava', price: '₹40/kg' },
+      { icon: 'fa-droplet', label: 'Coconut Water', price: '₹30/each' }
+    ],
+    tips: [
+      { icon: '📉', title: 'Blood Sugar Control', text: 'Eat small frequent meals. Avoid white rice, maida & refined sugars completely.' },
+      { icon: '🏃', title: 'Post-meal Walk', text: 'A 15-minute walk after lunch reduces post-prandial glucose by up to 25%.' },
+      { icon: '🧂', title: 'Reduce Salt', text: 'Limit sodium intake. Use herbs and lemon juice for flavouring instead.' },
+      { icon: '💊', title: 'Monitor Levels', text: 'Check fasting and post-meal glucose regularly. Track with a log book.' }
+    ]
+  },
+  hypertension: {
+    score: '89%', tag: 'BP Control Diet', thaliName: '❤️ Heart-Healthy DASH Thali',
+    thaliDesc: 'DASH-aligned thali featuring low-sodium sabzi, potassium-rich banana, whole grains, and flaxseed — proven to lower blood pressure naturally.',
+    carbs: '58g', protein: '24g', fats: '14g', fiber: '16g', kcal: '480',
+    days: [
+      { icon: '🌅', label: 'Mon', meal: 'Oats\n+ Banana' },
+      { icon: '🥬', label: 'Tue', meal: 'Palak Dal\n+ Rice' },
+      { icon: '🫓', label: 'Wed', meal: 'Multigrain\nRoti' },
+      { icon: '🍲', label: 'Thu', meal: 'Lentil\nSoup' },
+      { icon: '🥗', label: 'Fri', meal: 'Sprouts\nSalad' },
+      { icon: '🌾', label: 'Sat', meal: 'Quinoa\n+ Sabzi' },
+      { icon: '🍱', label: 'Sun', meal: 'Light\nThali' }
+    ],
+    alts: [
+      { icon: 'fa-seedling', label: 'Flaxseeds', price: '₹80/kg' },
+      { icon: 'fa-leaf', label: 'Spinach', price: '₹15/bunch' },
+      { icon: 'fa-wheat-awn', label: 'Oats', price: '₹70/kg' },
+      { icon: 'fa-apple-whole', label: 'Banana', price: '₹30/doz' },
+      { icon: 'fa-circle-dot', label: 'Pomegranate', price: '₹60/each' },
+      { icon: 'fa-droplet', label: 'Hibiscus Tea', price: '₹10/cup' }
+    ],
+    tips: [
+      { icon: '🧂', title: 'Low Sodium', text: 'Limit salt to <5g/day. Avoid pickles, papads, and processed foods entirely.' },
+      { icon: '🫀', title: 'Heart Foods', text: 'Add flaxseeds, walnuts, and omega-3 rich foods to every meal for heart health.' },
+      { icon: '🧘', title: 'Stress Relief', text: 'Practice pranayama or meditation 15 min daily — it measurably reduces BP.' },
+      { icon: '🚭', title: 'Lifestyle', text: 'Avoid alcohol, smoking, and caffeine. These directly spike blood pressure.' }
+    ]
+  },
+  anemia: {
+    score: '94%', tag: 'Iron-Enriched Diet', thaliName: '🩸 Iron-Rich Anemia Thali',
+    thaliDesc: 'Iron-dense thali with rajma, methi sabzi, jaggery, drumstick leaves, and citrus — maximizing iron absorption with Vitamin C pairing.',
+    carbs: '62g', protein: '26g', fats: '15g', fiber: '20g', kcal: '510',
+    days: [
+      { icon: '🌅', label: 'Mon', meal: 'Ragi\nPorridge' },
+      { icon: '🫘', label: 'Tue', meal: 'Rajma\n+ Rice' },
+      { icon: '🥬', label: 'Wed', meal: 'Methi\nDal Roti' },
+      { icon: '🍲', label: 'Thu', meal: 'Drumstick\nSambhar' },
+      { icon: '🌾', label: 'Fri', meal: 'Chana\n+ Salad' },
+      { icon: '🥗', label: 'Sat', meal: 'Palak\nPaneer' },
+      { icon: '🍱', label: 'Sun', meal: 'Iron\nThali' }
+    ],
+    alts: [
+      { icon: 'fa-seedling', label: 'Ragi Flour', price: '₹55/kg' },
+      { icon: 'fa-leaf', label: 'Drumstick Leaves', price: '₹20/bunch' },
+      { icon: 'fa-wheat-awn', label: 'Rajma / Chana', price: '₹80/kg' },
+      { icon: 'fa-circle-dot', label: 'Jaggery', price: '₹60/kg' },
+      { icon: 'fa-apple-whole', label: 'Amla / Citrus', price: '₹30/kg' },
+      { icon: 'fa-droplet', label: 'Pomegranate Juice', price: '₹40/glass' }
+    ],
+    tips: [
+      { icon: '🍋', title: 'Vitamin C Pairing', text: 'Eat iron-rich foods with citrus — lemon, amla, or orange to triple iron absorption.' },
+      { icon: '☕', title: 'Avoid Inhibitors', text: 'Do not drink tea or coffee within 1 hour of iron-rich meals. Tannins block absorption.' },
+      { icon: '🫘', title: 'Soak Legumes', text: 'Always soak rajma, chana overnight and discard water — reduces phytic acid by 40%.' },
+      { icon: '🌿', title: 'Cook in Iron', text: 'Cooking acidic foods like tomatoes in cast iron cookware adds dietary iron naturally.' }
+    ]
+  },
+  thyroid: {
+    score: '87%', tag: 'Thyroid Support Diet', thaliName: '🦋 Thyroid-Balanced Thali',
+    thaliDesc: 'Selenium & iodine balanced thali with Brazil nut analogs, sea vegetables, eggs, and anti-goitrogenic cooked crucifers for optimal thyroid function.',
+    carbs: '55g', protein: '25g', fats: '20g', fiber: '14g', kcal: '500',
+    days: [
+      { icon: '🌅', label: 'Mon', meal: 'Eggs\n+ Toast' },
+      { icon: '🐟', label: 'Tue', meal: 'Fish Curry\n+ Rice' },
+      { icon: '🫓', label: 'Wed', meal: 'Whole Wheat\nRoti' },
+      { icon: '🥬', label: 'Thu', meal: 'Cooked\nCabbage Dal' },
+      { icon: '🌾', label: 'Fri', meal: 'Quinoa\n+ Salad' },
+      { icon: '🥗', label: 'Sat', meal: 'Mixed\nVeg Soup' },
+      { icon: '🍱', label: 'Sun', meal: 'Iodine\nThali' }
+    ],
+    alts: [
+      { icon: 'fa-seedling', label: 'Sunflower Seeds', price: '₹60/kg' },
+      { icon: 'fa-fish', label: 'Small Fish', price: '₹80/kg' },
+      { icon: 'fa-egg', label: 'Eggs', price: '₹7/each' },
+      { icon: 'fa-wheat-awn', label: 'Iodized Salt', price: '₹10/pack' },
+      { icon: 'fa-apple-whole', label: 'Berries', price: '₹50/kg' },
+      { icon: 'fa-droplet', label: 'Coconut Milk', price: '₹25/cup' }
+    ],
+    tips: [
+      { icon: '🦋', title: 'Iodine Balance', text: 'Use iodized salt daily. Sea vegetables are excellent natural sources of iodine.' },
+      { icon: '🥦', title: 'Cook Cruciferous', text: 'Cook cabbage, broccoli & cauliflower — cooking neutralizes goitrogenic compounds.' },
+      { icon: '⚠️', title: 'Soy Caution', text: 'Limit soy products — they may interfere with thyroid hormone absorption.' },
+      { icon: '💊', title: 'Medication Timing', text: 'Take thyroid medication on empty stomach, 30–60 min before food for best absorption.' }
+    ]
+  }
+};
+
+/* ─── RENDER DASHBOARD ─── */
+function renderDashboard(condition, userName, mealType, budget) {
+  const cKey = condition || 'none';
+  const d = conditionData[cKey] || conditionData['none'];
+
+  // Welcome
+  document.getElementById('welcomeUser').textContent = userName || 'Nutritionist';
+
+  // Score ring
+  setTimeout(() => animateScore(d.score), 400);
+  document.getElementById('statScore').textContent = d.score;
+  document.getElementById('statCal').textContent = d.kcal;
+
+  // Health tag
+  document.getElementById('healthTag').textContent = d.tag;
+  document.getElementById('thaliName').textContent = d.thaliName;
+  document.getElementById('thaliDetails').textContent = d.thaliDesc;
+
+  // Nutrients
+  document.getElementById('nCarbs').textContent = d.carbs;
+  document.getElementById('nProtein').textContent = d.protein;
+  document.getElementById('nFats').textContent = d.fats;
+  document.getElementById('nFiber').textContent = d.fiber;
+  document.getElementById('nKcal').textContent = d.kcal;
+
+  // Week grid
+  const today = new Date().getDay(); // 0=Sun
+  const weekGrid = document.getElementById('weekGrid');
+  weekGrid.innerHTML = '';
+  d.days.forEach((day, i) => {
+    // Map Mon=0...Sun=6 to JS day
+    const dayIndex = (i + 1) % 7;
+    const isToday = dayIndex === today;
+    weekGrid.innerHTML += `
+      <div class="day-card ${isToday ? 'active' : ''}">
+        <span class="day-icon">${day.icon}</span>
+        <div class="day-label">${day.label}</div>
+        <div class="day-meal">${day.meal.replace(/\n/g, '<br>')}</div>
+      </div>`;
+  });
+
+  // Alternatives
+  const altGrid = document.getElementById('alternatives');
+  altGrid.innerHTML = '';
+  d.alts.forEach(alt => {
+    altGrid.innerHTML += `
+      <div class="alt-tag">
+        <i class="fas ${alt.icon}"></i>
+        <span>${alt.label}</span>
+        <span class="alt-price">${alt.price}</span>
+      </div>`;
+  });
+
+  // Tips
+  const tipsGrid = document.getElementById('tipsGrid');
+  tipsGrid.innerHTML = '';
+  d.tips.forEach(tip => {
+    tipsGrid.innerHTML += `
+      <div class="tip-item">
+        <div class="tip-icon">${tip.icon}</div>
+        <div class="tip-text"><strong>${tip.title}</strong>${tip.text}</div>
+      </div>`;
+  });
+}
+
+/* ─── SUPABASE INIT ─── */
+window.onload = async function() {
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      const { data } = await sb.from('consumers')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      const profile = data?.health_profile || {};
+      const displayName = data?.name || user.email?.split('@')[0] || 'Nutritionist';
+      renderDashboard(profile.condition, displayName, profile.mealType, profile.budget);
+    } else {
+      window.location.href = 'person-login.html';
+      return;
+    }
+  } catch (e) {
+    // Fallback demo render if Supabase isn't connected yet
+    renderDashboard('none', 'Demo User');
+  }
+
+  // Hide loading overlay
+  setTimeout(() => {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }, 1300);
+};
+
+/* ─── i18n ─── */
+const i18n = {
+  en: { badge: 'Your Nutrition Blueprint · AI Generated', welcomePrefix: 'Welcome back,', welcomeSub: 'Your personalized diet plan is ready — crafted around your health profile and dietary preferences.', navStatus: 'Dashboard · Live', logout: 'Logout', scoreLabel: 'Score', statScoreLabel: 'Nutri Score', statDayLabel: 'Day Plan', statCalLabel: 'Daily Kcal', chipThali: 'AI-Crafted Thali · Condition Aware', chipWeek: 'Weekly Blueprint', chipAlt: 'Budget Smart · Nutritious', chipTips: 'Condition-Specific Guidance', gtWeek: '7-Day Meal Rotation', gtAlt: 'Low-Cost Healthy Alternatives', gtTips: 'Personalized Health Tips', nCarbsL: 'Carbs', nProteinL: 'Protein', nFatsL: 'Fats', nFiberL: 'Fiber', nKcalL: 'Kcal' },
+  or: { badge: 'ଆପଣଙ୍କ ନ୍ୟୁଟ୍ରିସନ ବ୍ଲୁପ୍ରିଣ୍ଟ · AI', welcomePrefix: 'ସ୍ୱାଗତ,', welcomeSub: 'ଆପଣଙ୍କ ବ୍ୟକ୍ତିଗତ ଡାଏଟ ଯୋଜନା ପ୍ରସ୍ତୁତ।', navStatus: 'ଡ୍ୟାଶବୋର୍ଡ · ଲାଇଭ', logout: 'ଲଗଆଉଟ', scoreLabel: 'ସ୍କୋର', statScoreLabel: 'ନ୍ୟୁଟ୍ରି ସ୍କୋର', statDayLabel: 'ଦିନ ଯୋଜନା', statCalLabel: 'ଦୈନିକ କ୍ୟାଲ', chipThali: 'AI ଥାଳି · ସ୍ୱାସ୍ଥ୍ୟ ସଚେତନ', chipWeek: 'ସାପ୍ତାହିକ ଯୋଜନା', chipAlt: 'ବଜେଟ ସ୍ମାର୍ଟ', chipTips: 'ବ୍ୟକ୍ତିଗତ ଟିପ୍ସ', gtWeek: '7 ଦିନ ଭୋଜନ', gtAlt: 'ସୁଲଭ ବିକଳ୍ପ', gtTips: 'ସ୍ୱାସ୍ଥ୍ୟ ଟିପ୍ସ', nCarbsL: 'ଶ୍ୱେତସାର', nProteinL: 'ପ୍ରୋଟିନ', nFatsL: 'ଚର୍ବି', nFiberL: 'ଫାଇବର', nKcalL: 'କ୍ୟାଲ' },
+  hi: { badge: 'आपका पोषण ब्लूप्रिंट · AI', welcomePrefix: 'वापसी स्वागत,', welcomeSub: 'आपकी व्यक्तिगत आहार योजना तैयार है।', navStatus: 'डैशबोर्ड · लाइव', logout: 'लॉगआउट', scoreLabel: 'स्कोर', statScoreLabel: 'न्यूट्री स्कोर', statDayLabel: 'दिन योजना', statCalLabel: 'दैनिक कैलोरी', chipThali: 'AI थाली · स्वास्थ्य केंद्रित', chipWeek: 'साप्ताहिक योजना', chipAlt: 'बजट स्मार्ट', chipTips: 'व्यक्तिगत सुझाव', gtWeek: '7 दिन का भोजन', gtAlt: 'किफायती स्वस्थ विकल्प', gtTips: 'स्वास्थ्य सुझाव', nCarbsL: 'कार्ब्स', nProteinL: 'प्रोटीन', nFatsL: 'वसा', nFiberL: 'फाइबर', nKcalL: 'कैलोरी' },
+  bn: { badge: 'আপনার পুষ্টি ব্লুপ্রিন্ট · AI', welcomePrefix: 'স্বাগতম,', welcomeSub: 'আপনার ব্যক্তিগতকৃত ডায়েট প্ল্যান প্রস্তুত।', navStatus: 'ড্যাশবোর্ড · লাইভ', logout: 'লগআউট', scoreLabel: 'স্কোর', statScoreLabel: 'নিউট্রি স্কোর', statDayLabel: 'দিনের প্ল্যান', statCalLabel: 'দৈনিক ক্যালরি', chipThali: 'AI থালি · স্বাস্থ্য সচেতন', chipWeek: 'সাপ্তাহিক পরিকল্পনা', chipAlt: 'বাজেট স্মার্ট', chipTips: 'ব্যক্তিগত টিপস', gtWeek: '৭ দিনের খাবার', gtAlt: 'সাশ্রয়ী বিকল্প', gtTips: 'স্বাস্থ্য টিপস', nCarbsL: 'কার্বস', nProteinL: 'প্রোটিন', nFatsL: 'ফ্যাট', nFiberL: 'ফাইবার', nKcalL: 'ক্যালরি' }
+};
+
+const __origDash = (typeof window.changeLanguage === 'function') ? window.changeLanguage : null;
+window.changeLanguage = function(lang) {
+  const d = i18n[lang] || i18n.en;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && typeof v === 'string') el.textContent = v; };
+  set('badgeText', d.badge); set('welcomePrefix', d.welcomePrefix); set('welcomeSub', d.welcomeSub);
+  set('navStatusText', d.navStatus); set('logoutText', d.logout); set('scoreLabel', d.scoreLabel);
+  set('statScoreLabel', d.statScoreLabel); set('statDayLabel', d.statDayLabel); set('statCalLabel', d.statCalLabel);
+  set('chipThali', d.chipThali); set('chipWeek', d.chipWeek); set('chipAlt', d.chipAlt); set('chipTips', d.chipTips);
+  set('gtWeek', d.gtWeek); set('gtAlt', d.gtAlt); set('gtTips', d.gtTips);
+  set('nCarbsL', d.nCarbsL); set('nProteinL', d.nProteinL); set('nFatsL', d.nFatsL);
+  set('nFiberL', d.nFiberL); set('nKcalL', d.nKcalL);
+  try { __origDash && __origDash(lang); } catch(e) {}
+};
+window.changeLanguage('en');
+</script>
+</body>
+</html>
