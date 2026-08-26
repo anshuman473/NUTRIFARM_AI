@@ -351,14 +351,16 @@ async function handlePhoneLogin(event) {
 }
 
 /* ============================================================
-   6. LAND SUBMISSION & ADVANCED CSV PREDICTION
+   6. LAND SUBMISSION & ML-BACKED CROP PREDICTION
    ============================================================ */
+// Same-origin Flask backend (app.py serves this frontend directly).
+// If you deploy the frontend separately, point this at the backend's URL.
+const API_BASE = "";
+
 async function handleLandSubmit(event) {
     event.preventDefault();
     console.log("Land Submit Button Clicked!");
-    
-    const userSeason = (document.getElementById("season")?.value || "").trim().toLowerCase();
-    const userSoil = (document.getElementById("soilType")?.value || "").trim().toLowerCase();
+
     const getVal = (id) => document.getElementById(id)?.value || "";
 
     if (typeof sb === 'undefined') {
@@ -373,66 +375,60 @@ async function handleLandSubmit(event) {
         return;
     }
 
-    let bestCrop = "Millets (Drought Resistant)"; 
-    let topMatchScore = 0;
+    const payload = {
+        landArea: getVal("landArea"),
+        soilType: getVal("soilType"),
+        soilPH: getVal("soilPH"),
+        waterSource: getVal("waterSource"),
+        irrigationAvail: getVal("irrigationAvail"),
+        season: getVal("season"),
+        investment: getVal("investment"),
+        fertilizer: getVal("fertilizer"),
+        prevCrop: getVal("prevCrop"),
+        currCrop: getVal("currCrop"),
+    };
 
+    let prediction = null;
     try {
-        const response = await fetch('full_synthetic_crop_prediction_dataset.csv');
-        
+        const response = await fetch(`${API_BASE}/predict_crop`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
         if (response.ok) {
-            const csvText = await response.text();
-            const rows = csvText.split('\n'); 
-            let matchCount = 0;
-
-            for (let i = 1; i < rows.length; i++) {
-                const columns = rows[i].split(',');
-                
-                if (columns.length >= 13) {
-                    const rowSoil = columns[1].trim().toLowerCase();
-                    const rowSeason = columns[5].trim().toLowerCase();
-                    const rowCrop = columns[11].trim(); 
-                    const rowMatch = parseInt(columns[12].trim()) || 0; 
-
-                    if (rowSeason === userSeason && rowSoil === userSoil) {
-                        matchCount++;
-                        if (rowMatch > topMatchScore) {
-                            topMatchScore = rowMatch;
-                            bestCrop = rowCrop;
-                        }
-                    }
-                }
-            }
-            
-            if(matchCount > 0) {
-                alert(`📊 AI PREDICTION COMPLETE!\n\n🌱 Condition: ${userSoil} soil during ${userSeason}\n🏆 Top Recommendation: ${bestCrop} (${topMatchScore}% Confidence)\n(Based on ${matchCount} historical records)`);
-            } else {
-                alert(`No historical data found for ${userSoil} in ${userSeason}. Defaulting to Millets.`);
-            }
+            prediction = await response.json();
+            const topList = prediction.top_matches
+                .map(m => `${m.crop} (${m.match_percentage}%)`)
+                .join("\n");
+            alert(`📊 AI PREDICTION COMPLETE!\n\n🏆 Top Recommendation: ${prediction.recommended_crop} (${prediction.match_percentage}% match)\n\nOther good options:\n${topList}\n\nSoil Health Score: ${prediction.soil_health_score}/100`);
         } else {
-            console.warn("Dataset not found. Did you rename the file?");
+            console.warn("Prediction API returned an error", await response.text());
+            alert("Prediction engine returned an error. Saving profile anyway...");
         }
     } catch (error) {
-        console.error("CSV Loading Error:", error);
-        alert("Prediction Engine Offline. Saving profile anyway...");
+        console.error("Prediction API Error:", error);
+        alert("Prediction engine offline (is the Flask backend running?). Saving profile anyway...");
     }
 
     try {
-        const landData = { 
-            area: getVal("landArea"), 
-            soil: document.getElementById("soilType")?.value || "N/A", 
-            ph: getVal("soilPH") || "N/A", 
+        const landData = {
+            area: getVal("landArea"),
+            soil: getVal("soilType") || "N/A",
+            ph: getVal("soilPH") || "N/A",
             water: getVal("waterSource"),
-            season: document.getElementById("season")?.value || "N/A",
-            ai_recommended_crop: bestCrop, 
-            lastUpdated: new Date() 
+            season: getVal("season") || "N/A",
+            ai_recommended_crop: prediction ? prediction.recommended_crop : "Unavailable",
+            ai_match_percentage: prediction ? prediction.match_percentage : null,
+            ai_top_matches: prediction ? prediction.top_matches : null,
+            lastUpdated: new Date(),
         };
-        
+
         console.log("Saving to Supabase...", landData);
 
         const { error } = await sb.from('farmers').update({ land_details: landData }).eq('id', user.id);
-        
-        if (!error) { 
-            window.location.href = "farmer-dashboard.html"; 
+
+        if (!error) {
+            window.location.href = "farmer-dashboard.html";
         } else {
             alert("Error saving data to database: " + error.message);
         }
@@ -443,14 +439,61 @@ async function handleLandSubmit(event) {
 
 async function handleHealthSubmit(event) {
     event.preventDefault();
-    const getVal = (id) => document.getElementById(id)?.value || "Not Specified";
+    const getVal = (id) => document.getElementById(id)?.value || "";
     const { data: { user } } = await sb.auth.getUser();
 
-    if (user) {
-        const healthData = { condition: getVal("healthCondition"), mealType: getVal("mealType"), submissionDate: new Date() };
-        const { error } = await sb.from('consumers').update({ health_profile: healthData }).eq('id', user.id);
-        if (!error) { alert("Health Profile Saved!"); window.location.href = "person-dashboard.html"; }
+    if (!user) {
+        alert("Session lost! Please log in again.");
+        window.location.href = "person-login.html";
+        return;
     }
+
+    const payload = {
+        healthCondition: getVal("healthCondition") || "none",
+        allergies: getVal("allergies"),
+        foodPreference: getVal("foodPreference") || "veg",
+        mealType: getVal("mealType") || "North Indian",
+        budgetPref: getVal("budgetPref") || "medium",
+        lifeStage: getVal("lifeStage") || "standard",
+    };
+
+    let thali = null;
+    try {
+        const response = await fetch(`${API_BASE}/recommend_thali`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+            thali = await response.json();
+            const plan = thali.thali_plan;
+            let msg = `🍽️ YOUR RECOMMENDED THALI (${thali.region_style})\n\n`;
+            msg += `Grain: ${plan.grain}\nDal/Curry: ${plan.dal_or_curry}\nVegetable: ${plan.vegetable}\nProtein: ${plan.protein}\nSide: ${plan.side}\n\n`;
+            msg += `Health note: ${thali.health_note}\n`;
+            if (thali.life_stage_note) msg += `${thali.life_stage_note}\n`;
+            if (thali.allergy_warnings.length) msg += `\n⚠️ ${thali.allergy_warnings.join(" ")}`;
+            alert(msg);
+        } else {
+            console.warn("Thali API returned an error", await response.text());
+        }
+    } catch (error) {
+        console.error("Thali API Error:", error);
+        alert("Recommendation engine offline (is the Flask backend running?). Saving profile anyway...");
+    }
+
+    const healthData = {
+        condition: payload.healthCondition,
+        allergies: payload.allergies,
+        foodPreference: payload.foodPreference,
+        mealType: payload.mealType,
+        budgetPref: payload.budgetPref,
+        lifeStage: payload.lifeStage,
+        recommended_thali: thali ? thali.thali_plan : null,
+        submissionDate: new Date(),
+    };
+    const { error } = await sb.from('consumers').update({ health_profile: healthData }).eq('id', user.id);
+    if (!error) { window.location.href = "person-dashboard.html"; }
+    else { alert("Error saving profile: " + error.message); }
 }
 
 /* ============================================================
