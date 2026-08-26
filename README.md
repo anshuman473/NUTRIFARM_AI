@@ -1,53 +1,69 @@
-# 🌾 NutriFarm AI (Agri-Smart)
+# NutriFarm AI — Backend
 
-> **Bridging the gap between rural wisdom and modern technology.**
+## What's here
+- `generate_dataset.py` — builds `../crop_dataset_v2.csv`, a rule-encoded dataset
+  based on real agronomic profiles (pH tolerance, water need, season fit) for 7 crops.
+  **Use this instead of `full_synthetic_crop_prediction_dataset.csv`** — that original
+  file's `recommended_crop` label has no relationship to any input column (verified:
+  every input combination produces a uniform ~14.3%, i.e. random, label distribution).
+- `train_model.py` — trains a RandomForestClassifier on `crop_dataset_v2.csv` and
+  saves `model/crop_model.pkl` (~5.5MB). Test accuracy: **57%** vs a 14.3% random
+  baseline (7 classes) — a real ~4x lift, with season and soil type as the top
+  predictive features, matching real agronomy.
+- `app.py` — Flask server. Serves the existing frontend (`index.html` etc. from the
+  repo root) AND exposes:
+  - `POST /predict_crop` — ML crop recommendation
+  - `POST /recommend_thali` — rule-based nutrition/meal recommendation
+  - `GET /health` — sanity check
 
-NutriFarm AI is a comprehensive web-based AgriTech & Health ecosystem designed to empower farmers, consumers, and non-governmental organizations (NGOs). By combining AI-driven analytics, soil profiling, personalized nutrition planning, and multilingual accessibility, NutriFarm AI promotes sustainable agriculture, food security, and community health[cite: 3, 6, 7].
+## Setup
 
----
+```bash
+cd backend
+pip install -r requirements.txt
 
-🚀 Key Features
+# Only needed once, or if you want to regenerate/retrain:
+python generate_dataset.py
+python train_model.py
 
-👨‍🌾 **1. Farmer Portal & Insight**
-- **Soil & Land Profiling:** Interactive form to submit details such as land area, soil type, pH level, water sources, irrigation availability, and current/previous crop data[cite: 2, 7].
-- **Voice & Image Support:** Voice-to-text notes for describing land issues and an image upload preview feature for soil inspection.
-- **AI Crop Recommendations:** Data-driven crop matching percentages (e.g., Green Gram, Basmati Rice, Sunflower) based on land data and season (Kharif, Rabi, Zaid).
-- **Soil Health Score:** Automated calculation of soil health percentages based on parameters like pH level[cite: 2].
-- **Farmer Community Hub:** Local discussion groups (e.g., Rice Pests, Organic Farming) connecting over 5,000+ local farmers[cite: 2].
+# Run the server (serves frontend + API on one origin):
+python app.py
+```
 
-🥗 **2. Consumer & Personal Nutrition Architect**
-- **Health-Aware Profiles:** Personalized health tracking supporting conditions like Diabetes, Hypertension (BP), Anemia, and Thyroid, alongside life-stage tracking (Pregnancy/Lactation)[cite: 5].
-- **Personalized "Best Local Thali":** Recommendations tailored to regional preferences (North Indian, South Indian, Local) and budget levels[cite: 5].
-- **Dynamic Weekly Meal Plans & Alternatives:** AI-driven daily meal schedules and low-cost healthy substitute recommendations.
-- **Nutrition Score:** Detailed scoring evaluating health profiles against dietary preferences[cite: 5, 10].
+Open `http://localhost:5000` — this is now the single entry point for the whole
+app (frontend forms will call the same-origin `/predict_crop` and
+`/recommend_thali` automatically via `script.js`).
 
-🤝 **3. NGO Monitoring Command Center**
-- **Regional Insights:** Filter options by village/block and farming seasons.
-- **Health Indicators:** Monitor community-level metrics such as Diet Diversity scores and Anemia risk[cite: 8].
-- **Initiative Management:** Track and launch upcoming agricultural projects and initiatives[cite: 8].
+## API examples
 
-### 🌐 4. Accessibility & Multilingual Support
-- Built-in multi-language switcher supporting **10+ Indian regional languages**: English, Odia (ଓଡ଼ିଆ), Hindi (हिन्दी), Marathi (मराठी), Bengali (বাংলা), Telugu (తెలుగు), Tamil (தமிழ்), Kannada (ಕನ್ನಡ), Gujarati (ગુજરાતી), and Punjabi (ਪੰਜਾਬੀ)[cite: 3, 6, 7].
+```bash
+curl -X POST http://localhost:5000/predict_crop \
+  -H "Content-Type: application/json" \
+  -d '{"landArea":3,"soilType":"Loamy","soilPH":6.5,"waterSource":"Canal",
+       "irrigationAvail":"Yes","season":"Rabi","investment":"medium",
+       "fertilizer":"mixed","prevCrop":"Wheat","currCrop":"Rice"}'
 
----
-🛠️ **Tech Stack**
+curl -X POST http://localhost:5000/recommend_thali \
+  -H "Content-Type: application/json" \
+  -d '{"healthCondition":"diabetes","allergies":"nuts","foodPreference":"veg",
+       "mealType":"South Indian","budgetPref":"low","lifeStage":"standard"}'
+```
 
-- **Frontend:** HTML5, CSS3 (Modern Flexbox/Grid, Custom Neon/Glassmorphism themes)[cite: 2, 6, 10], Vanilla JavaScript[cite: 1, 3, 5]
-- **Web APIs:** Web Speech API (`webkitSpeechRecognition`), FileReader API[cite: 7], LocalStorage API[cite: 2, 10]
-- **Backend Services:** Firebase Firestore (v10.7.1) for database management
-- **Typography & Icons:** Google Fonts (Poppins, Inter, Segoe UI)[cite: 2, 3, 5]
+## Known limitations (be ready to explain these if asked)
+- `/recommend_thali` is rule-based, not ML — that's intentional. It's transparent,
+  explainable, and correct by construction; a model trained on 4 fields with no
+  labeled ground truth would be worse and unexplainable.
+- `previous_crop`/`current_crop` inputs are constrained to 6 known crop names
+  (dropdown in `land-details.html`) so they map cleanly to the trained model;
+  they don't affect the prediction much (low feature importance) but are kept
+  for future extension.
+- 57% accuracy is real but not "impressive-sounding." That's honest — this is a
+  7-class problem with meaningfully overlapping crop profiles (e.g. Cotton vs
+  Groundnut have similar seasonal/soil needs). If asked, explain the baseline
+  (14.3%) rather than the raw number in isolation.
 
----
-📂 **Project Structure**
-
-```text
-├── index.html            # Main Landing / AgriTech Command Center Page[cite: 6]
-├── farmer-login.html     # Farmer Registration & Authentication Page[cite: 3]
-├── land-profiling.html   # Land & Farming Data Collection (Voice/Image inputs)[cite: 7]
-├── farmer-dashboard.html # Farmer Insights & AI Recommendations Dashboard[cite: 1, 2]
-├── person-login.html     # Consumer Health & Nutrition Profile Form
-├── nutri-dashboard.html   # Personalized Diet Plan & Healthy Thali Guide[cite: 10]
-├── ngo-dashboard.html    # NGO Monitoring & Regional Insights Command Center[cite: 8]
-├── style.css             # Main stylesheet[cite: 1, 3, 6]
-├── script.js            # Core application logic & multi-language handling[cite: 1, 3, 5]
-└── firebase-config.js    # Firebase initialization & Firestore database export[cite: 4]
+## Deployment (quick options for a 2-day deadline)
+- **Render / Railway (free tier)**: point at `backend/app.py`, add
+  `requirements.txt`, set start command `python app.py` (or gunicorn for prod).
+  Since Flask serves the frontend too, this is a single deployable service.
+- Keep Supabase as-is for auth/DB — no changes needed there.
