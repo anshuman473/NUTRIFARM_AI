@@ -890,7 +890,7 @@ const conditionData = {
 };
 
 /* ─── RENDER DASHBOARD ─── */
-function renderDashboard(condition, userName, mealType, budget) {
+function renderDashboard(condition, userName, mealType, budget, realThali) {
   const cKey = condition || 'none';
   const d = conditionData[cKey] || conditionData['none'];
 
@@ -905,7 +905,15 @@ function renderDashboard(condition, userName, mealType, budget) {
   // Health tag
   document.getElementById('healthTag').textContent = d.tag;
   document.getElementById('thaliName').textContent = d.thaliName;
-  document.getElementById('thaliDetails').textContent = d.thaliDesc;
+
+  // Prefer the real, personalized plan from /recommend_thali (saved on
+  // submission) over the static per-condition placeholder text.
+  if (realThali) {
+    document.getElementById('thaliDetails').textContent =
+      `${realThali.grain} • ${realThali.dal_or_curry} • ${realThali.vegetable} • ${realThali.protein} • ${realThali.side}`;
+  } else {
+    document.getElementById('thaliDetails').textContent = d.thaliDesc;
+  }
 
   // Nutrients
   document.getElementById('nCarbs').textContent = d.carbs;
@@ -966,7 +974,7 @@ window.onload = async function() {
 
       const profile = data?.health_profile || {};
       const displayName = data?.name || user.email?.split('@')[0] || 'Nutritionist';
-      renderDashboard(profile.condition, displayName, profile.mealType, profile.budget);
+      renderDashboard(profile.condition, displayName, profile.mealType, profile.budgetPref, profile.recommended_thali);
     } else {
       window.location.href = 'person-login.html';
       return;
