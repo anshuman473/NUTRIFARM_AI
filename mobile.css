@@ -1,0 +1,157 @@
+/* ============================================
+   NutriFarm AI — mobile.css
+   Drop-in mobile-friendly overrides.
+   Link this AFTER style.css on every page:
+   <link rel="stylesheet" href="style.css">
+   <link rel="stylesheet" href="mobile.css">
+   ============================================ */
+
+/* 1. Sane box model everywhere, prevents horizontal overflow */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 2. Fluid images/media — nothing ever spills past its container */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 3. Base font scaling so text is readable without zooming */
+html {
+  font-size: 16px;
+}
+body {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* 4. Touch-friendly tap targets (Apple/Google guideline: 44px min) */
+button, .btn, input[type="submit"], input[type="button"], a.btn, select {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 16px;
+  font-size: 1rem;
+}
+input, select, textarea {
+  font-size: 16px; /* prevents iOS Safari auto-zoom on focus */
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+/* 5. Forms stack cleanly on small screens */
+@media (max-width: 768px) {
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  form .form-row,
+  form .form-group.inline {
+    flex-direction: column;
+  }
+  label {
+    margin-bottom: 4px;
+    display: block;
+  }
+}
+
+/* 6. Grids / dashboards collapse to single column on phones */
+@media (max-width: 768px) {
+  .dashboard-grid,
+  .grid,
+  .cards-grid,
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+  .container,
+  .wrapper,
+  .page-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* 7. Flex row layouts stack vertically on phones */
+@media (max-width: 768px) {
+  .flex-row,
+  .row,
+  .two-column,
+  .split-layout {
+    flex-direction: column !important;
+  }
+  .flex-row > *,
+  .row > *,
+  .two-column > *,
+  .split-layout > * {
+    width: 100% !important;
+  }
+}
+
+/* 8. Tables — horizontal scroll instead of squished columns */
+@media (max-width: 768px) {
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 9. Navbar → hamburger-friendly stacking (pairs with mobile.js toggle) */
+@media (max-width: 768px) {
+  .navbar,
+  nav {
+    flex-wrap: wrap;
+  }
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+  }
+  .nav-links.open {
+    display: flex;
+  }
+  .nav-toggle {
+    display: block;
+  }
+}
+@media (min-width: 769px) {
+  .nav-toggle {
+    display: none;
+  }
+}
+
+/* 10. Language switcher & buttons wrap instead of overflowing */
+@media (max-width: 480px) {
+  .lang-switcher,
+  .btn-group,
+  .action-buttons {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.1rem; }
+}
+
+/* 11. Fixed/sticky headers shouldn't eat the whole screen on short devices */
+@media (max-height: 600px) {
+  .hero, .banner {
+    min-height: auto;
+    padding: 24px 16px;
+  }
+}
+
+/* 12. Respect safe areas on notched phones (iPhone) if used as PWA */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
