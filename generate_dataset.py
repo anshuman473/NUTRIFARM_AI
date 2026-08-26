@@ -170,7 +170,7 @@ def generate(n_rows: int = N_ROWS) -> pd.DataFrame:
 
 def main():
     df = generate()
-    out_path = os.path.join(os.path.dirname(__file__), "..", "crop_dataset_v2.csv")
+    out_path = os.path.join(os.path.dirname(__file__), "crop_dataset_v2.csv")
     df.to_csv(out_path, index=False)
     print(f"Wrote {len(df):,} rows -> {out_path}")
     print(df["recommended_crop"].value_counts())
