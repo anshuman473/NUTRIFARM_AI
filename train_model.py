@@ -1,10 +1,10 @@
 """
 NutriFarm AI — Crop Recommendation Model Training
 ---------------------------------------------------
-Trains a RandomForestClassifier on full_synthetic_crop_prediction_dataset.csv
-to predict `recommended_crop` from farm/soil/season inputs, and saves a
-single deployable scikit-learn Pipeline (preprocessing + model) to
-backend/model/crop_model.pkl.
+Trains a RandomForestClassifier on crop_dataset_v2.csv to predict
+`recommended_crop` from farm/soil/season inputs, and saves a single
+deployable scikit-learn Pipeline (preprocessing + model) to
+crop_model.pkl.
 
 Run:
     python train_model.py
@@ -21,8 +21,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "crop_dataset_v2.csv")
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "model")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "crop_dataset_v2.csv")
+MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(MODEL_DIR, "crop_model.pkl")
 
 CATEGORICAL_FEATURES = [
