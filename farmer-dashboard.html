@@ -1214,14 +1214,20 @@
 
                 const aiContainer = document.getElementById("aiCropList");
                 if (land.ai_recommended_crop) {
+                    const matchPct = land.ai_match_percentage != null ? `${land.ai_match_percentage}%` : "--";
+                    const alternatives = (land.ai_top_matches || [])
+                        .slice(1)
+                        .map(m => `<div class="crop-item"><div class="item-name">${m.crop}</div><span class="tag">${m.match_percentage}%</span></div>`)
+                        .join("");
                     aiContainer.innerHTML = `
                         <div class="crop-item">
                             <div>
                                 <div class="item-name">🏆 ${land.ai_recommended_crop}</div>
                                 <div class="item-meta">AI Top Pick for your conditions</div>
                             </div>
-                            <span class="tag top-pick">Recommended</span>
+                            <span class="tag top-pick">${matchPct} match</span>
                         </div>
+                        ${alternatives}
                     `;
                 } else {
                     aiContainer.innerHTML = `
