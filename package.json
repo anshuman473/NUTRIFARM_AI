@@ -1,0 +1,23 @@
+{
+  "name": "nutrifarm-ai",
+  "version": "1.0.0",
+  "description": "NutriFarm AI - AgriTech platform connecting farmers, consumers, and NGOs with AI-driven crop recommendations and personalized nutrition planning",
+  "main": "mobile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anshuman473/NUTRIFARM_AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anshuman473/NUTRIFARM_AI/issues"
+  },
+  "homepage": "https://github.com/anshuman473/NUTRIFARM_AI#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
