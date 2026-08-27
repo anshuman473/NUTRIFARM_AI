@@ -5,8 +5,23 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="mobile.css">
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nutri-FarmAI | AgriTech Command Center</title>
+  <meta name="description" content="NutriFarm AI connects farmers, consumers, and NGOs on one platform — AI-driven crop recommendations for farmers and personalized nutrition (thali) planning for consumers, based on soil data and health profiles." />
+  <link rel="canonical" href="https://nutrifarm-ai.vercel.app/" />
+
+  <!-- Open Graph / Facebook, WhatsApp, LinkedIn preview -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nutrifarm-ai.vercel.app/" />
+  <meta property="og:title" content="Nutri-FarmAI | AgriTech Command Center" />
+  <meta property="og:description" content="AI-driven crop recommendations for farmers and personalized nutrition planning for consumers — built on real soil and health data." />
+  <meta property="og:image" content="https://nutrifarm-ai.vercel.app/icons/icon-512.png" />
+
+  <!-- Twitter/X card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Nutri-FarmAI | AgriTech Command Center" />
+  <meta name="twitter:description" content="AI-driven crop recommendations for farmers and personalized nutrition planning for consumers." />
+  <meta name="twitter:image" content="https://nutrifarm-ai.vercel.app/icons/icon-512.png" />
+
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
   <style>
     /* ─── RESET & BASE ─────────────────────────────────── */
@@ -37,6 +52,9 @@
     }
 
     /* ─── CUSTOM CURSOR ─────────────────────────────────── */
+    /* Hidden by default — JS only shows these after a real mousemove
+       fires, so touch devices (no mousemove ever) never render the
+       dot/ring frozen at a stale position over the content. */
     .cursor-dot {
       position: fixed;
       top: 0; left: 0;
@@ -47,6 +65,7 @@
       z-index: 9999;
       transform: translate(-50%, -50%);
       transition: transform 0.05s;
+      opacity: 0;
     }
     .cursor-ring {
       position: fixed;
@@ -57,7 +76,17 @@
       pointer-events: none;
       z-index: 9998;
       transform: translate(-50%, -50%);
-      transition: transform 0.12s ease, width 0.2s, height 0.2s, border-color 0.2s;
+      transition: transform 0.12s ease, width 0.2s, height 0.2s, border-color 0.2s, opacity 0.2s;
+      opacity: 0;
+    }
+    .cursor-dot.active, .cursor-ring.active {
+      opacity: 1;
+    }
+    /* Belt-and-braces: real touch devices never get cursor:none either,
+       so native tap feedback still works if JS is slow to load. */
+    @media (hover: none), (pointer: coarse) {
+      body { cursor: auto; }
+      .cursor-dot, .cursor-ring { display: none; }
     }
     body:has(.portal-card:hover) .cursor-ring {
       width: 60px; height: 60px;
@@ -865,7 +894,19 @@
 const dot  = document.getElementById('cursorDot');
 const ring = document.getElementById('cursorRing');
 let mx = 0, my = 0, rx = 0, ry = 0;
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+let cursorActivated = false;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  if (!cursorActivated) {
+    // First real mouse movement: this is a mouse-driven device, safe to show.
+    // Snap rx/ry to the current position so the ring doesn't animate in
+    // from a stale (0,0) starting point.
+    rx = mx; ry = my;
+    dot.classList.add('active');
+    ring.classList.add('active');
+    cursorActivated = true;
+  }
+});
 (function loop() {
   rx += (mx - rx) * 0.12;
   ry += (my - ry) * 0.12;
