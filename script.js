@@ -355,9 +355,8 @@ async function handlePhoneLogin(event) {
    ============================================================ */
 // Same-origin Flask backend (app.py serves this frontend directly).
 // If you deploy the frontend separately, point this at the backend's URL.
-// TODO: after deploying app.py on Render, paste your live backend URL below
-// e.g. const API_BASE = "https://nutrifarm-ai-xxxx.onrender.com";
-const API_BASE = "";
+// Live backend deployed on Render
+const API_BASE = "https://nutrifarm-ai.onrender.com";
 
 async function handleLandSubmit(event) {
     event.preventDefault();
