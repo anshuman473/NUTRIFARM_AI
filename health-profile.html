@@ -617,6 +617,18 @@
           </select>
         </div>
 
+        <div class="field col-2">
+          <label id="locLabel">Current Location <span style="opacity:.6;font-weight:400;">(so we can find real food near you)</span></label>
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+            <button type="button" id="detectLocBtn" class="submit-btn" style="padding:.6rem 1.1rem;font-size:.85rem;" onclick="captureLocation()">
+              <i class="fas fa-location-crosshairs"></i>&nbsp; Detect My Location
+            </button>
+            <span id="locStatus" style="font-size:.85rem;opacity:.75;">Not captured yet</span>
+          </div>
+          <input type="hidden" id="userLat" value="">
+          <input type="hidden" id="userLng" value="">
+        </div>
+
         <div class="output-box">
           <div class="output-label"><i class="fas fa-sparkles"></i><span id="outLabel">Your Analysis Will Generate</span></div>
           <div class="output-sub" id="outSub">An AI-crafted blueprint tailored to your profile:</div>
