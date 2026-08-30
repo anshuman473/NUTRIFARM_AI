@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="mobile.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nutri-FarmAI | Land Intelligence Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #080c08;
+  --g1: #0f2010;
+  --g2: #1a3a1f;
+  --g4: #2e8c38;
+  --g5: #46c455;
+  --g6: #8de898;
+  --gold: #d4a83a;
+  --gold2: #f0cc70;
+  --cream: #f5f0e8;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  background: var(--black);
+  color: var(--cream);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: none;
+  position: relative;
+}
+.cursor-dot {
+  position: fixed; top:0; left:0; width:8px; height:8px;
+  background: var(--g5); border-radius:50%;
+  pointer-events:none; z-index:10001;
+  transform: translate(-50%, -50%);
+}
+.cursor-ring {
+  position: fixed; top:0; left:0; width:36px; height:36px;
+  border: 1.5px solid rgba(70,196,85,0.5); border-radius:50%;
+  pointer-events:none; z-index:10000;
+  transform: translate(-50%, -50%);
+  transition: width .2s, height .2s, border-color .2s;
+}
+body:has(input:focus) .cursor-ring,
+body:has(select:focus) .cursor-ring,
+body:has(button:hover) .cursor-ring,
+body:has(.ai-btn:hover) .cursor-ring {
+  width: 60px; height: 60px; border-color: var(--g5);
+}
+#bgCanvas { position: fixed; inset:0; z-index:0; pointer-events:none; }
+.grain {
+  position: fixed; inset:-50%; width:200%; height:200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025; pointer-events:none; z-index:1;
+  animation: grainShift .5s steps(2) infinite;
+}
+@keyframes grainShift {
+  0%{transform:translate(0,0);} 25%{transform:translate(-2%,-1%);}
+  50%{transform:translate(1%,2%);} 75%{transform:translate(2%,-2%);} 100%{transform:translate(0,0);}
+}
+.navbar {
+  position: relative; z-index:100;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.4rem 3.5rem;
+  border-bottom: 1px solid rgba(70,196,85,0.08);
+  animation: fadeSlideDown .7s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes fadeSlideDown {
+  from{opacity:0;transform:translateY(-24px);} to{opacity:1;transform:translateY(0);}
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.5rem; font-weight:800; letter-spacing:-0.03em;
+  display:flex; align-items:center; gap:10px;
+  text-decoration:none; color: var(--cream);
+}
+.logo-mark { width:34px; height:34px; }
+.logo-mark svg { width:34px; height:34px; }
+.logo-ai { color: var(--gold); }
+.nav-right { display:flex; align-items:center; gap:1.5rem; }
+.nav-status {
+  display:flex; align-items:center; gap:8px;
+  font-size:0.72rem; letter-spacing:0.1em;
+  text-transform:uppercase; color: rgba(245,240,232,0.4);
+}
+.status-dot {
+  width:6px; height:6px; border-radius:50%;
+  background: var(--g5); box-shadow: 0 0 8px var(--g5);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+.lang-dropdown {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(70,196,85,0.15);
+  color: var(--cream);
+  padding: 0.45rem 2rem 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 0.82rem;
+  cursor: none; outline: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  transition: border-color .2s, background-color .2s;
+}
+.lang-dropdown:hover { border-color: rgba(70,196,85,0.35); background-color: rgba(70,196,85,0.05); }
+.lang-dropdown option { background: #0f2010; }
+.page-shell {
+  position: relative; z-index:10;
+  padding: 2rem 3.5rem 3rem;
+  animation: fadeUp .9s cubic-bezier(0.16,1,0.3,1) .15s both;
+}
+@keyframes fadeUp {
+  from{opacity:0;transform:translateY(40px);} to{opacity:1;transform:translateY(0);}
+}
+.page-top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+.badge {
+  display: inline-flex; align-items:center; gap:8px;
+  font-size:0.7rem; font-weight:500; letter-spacing:0.14em;
+  text-transform:uppercase; color: var(--gold);
+  border: 1px solid rgba(212,168,58,0.3);
+  background: rgba(212,168,58,0.07);
+  padding: 0.35rem 0.9rem; border-radius: 4px;
+  width: fit-content;
+  margin-bottom: 1rem;
+}
+.badge-pulse { width:5px; height:5px; border-radius:50%;
+  background: var(--gold); animation: blink 1.5s ease-in-out infinite; }
+.page-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight:800; line-height:0.95; letter-spacing:-0.04em;
+}
+.page-title .t1 { color: var(--cream); display:inline; }
+.page-title .t2 {
+  display:inline;
+  background: linear-gradient(90deg, var(--g4), var(--g5), var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; background-size: 200%;
+  animation: shimmer 4s linear infinite;
+}
+@keyframes shimmer { 0%{background-position:0%;} 100%{background-position:200%;} }
+.page-sub {
+  margin-top: .7rem;
+  font-size: 0.95rem; font-weight:300;
+  color: rgba(245,240,232,0.5);
+  max-width: 580px; line-height:1.6;
+}
+.hero-metrics {
+  display: flex; align-items: flex-end; gap: 1.5rem;
+}
+.metric { text-align:right; }
+.metric .mv {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.6rem; font-weight:800;
+  color: var(--g5); line-height:1; letter-spacing:-.04em;
+}
+.metric .ml {
+  font-size:0.65rem; text-transform:uppercase;
+  letter-spacing:0.12em; color: rgba(245,240,232,0.3); margin-top:3px;
+}
+.metric-div { width:1px; height:36px; background: rgba(70,196,85,0.15); }
+.dashboard-container {
+  position: relative;
+  background: rgba(15,32,16,0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1.5px solid rgba(70,196,85,0.12);
+  border-top: 2px solid rgba(70,196,85,0.25);
+  border-radius: 20px;
+  padding: 2rem 2.25rem 2.25rem;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.45),
+              0 0 0 1px rgba(70,196,85,0.04),
+              0 0 60px rgba(70,196,85,0.06) inset;
+}
+.dashboard-container::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% -20%, rgba(70,196,85,0.15), transparent 60%);
+  pointer-events: none;
+}
+.dashboard-container::after {
+  content: ""; position: absolute; top: 0; left: 0;
+  height: 2px; width: 100%;
+  background: linear-gradient(90deg, transparent, var(--g5), var(--gold), transparent);
+  opacity: .6;
+}
+.header-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.75rem; padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(70,196,85,0.1);
+  position: relative;
+}
+.header-left { display:flex; align-items:center; gap: 14px; }
+.chip {
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:0.65rem; letter-spacing:0.14em; text-transform:uppercase;
+  color: var(--g5);
+  background: rgba(70,196,85,0.08);
+  border: 1px solid rgba(70,196,85,0.18);
+  border-radius: 30px;
+  padding: 5px 12px;
+}
+.chip .mini-dot {
+  width:5px; height:5px; border-radius:50%;
+  background: var(--g5); box-shadow: 0 0 6px var(--g5);
+  animation: blink 1.8s ease-in-out infinite;
+}
+h2.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.15rem; font-weight:800;
+  letter-spacing:0.02em; color: var(--cream);
+  text-transform: uppercase;
+}
+.ai-tools { display:flex; gap:10px; }
+.ai-btn {
+  background: rgba(8,12,8,0.5);
+  border: 1px solid rgba(70,196,85,0.18);
+  color: var(--g5);
+  width: 42px; height:42px;
+  border-radius: 12px;
+  display:flex; align-items:center; justify-content:center;
+  cursor: pointer;
+  transition: all .3s cubic-bezier(0.4,0,0.2,1);
+  font-size: 0.95rem;
+  position: relative;
+}
+.ai-btn:hover {
+  background: linear-gradient(135deg, var(--g5), var(--g4));
+  color: var(--black);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(70,196,85,0.35);
+  border-color: transparent;
+}
+.ai-btn.recording {
+  background: linear-gradient(135deg, #e53935, #b71c1c);
+  color: white;
+  border-color: transparent;
+  animation: recordPulse 1s ease-in-out infinite;
+}
+@keyframes recordPulse {
+  0%,100%{ box-shadow: 0 0 0 0 rgba(229,57,53,0.4); }
+  50%{ box-shadow: 0 0 0 10px rgba(229,57,53,0); }
+}
+.grid-system {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.1rem 1.25rem;
+}
+.group-title {
+  grid-column: span 4;
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+}
+.group-title::before {
+  content: "";
+  width: 28px; height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+.group-title .gt-num {
+  font-size: 0.6rem; color: rgba(245,240,232,0.25);
+  letter-spacing: 0.16em; margin-left: auto;
+}
+.field { display: flex; flex-direction: column; }
+.field.full { grid-column: span 4; }
+.field.half { grid-column: span 2; }
+label {
+  font-size: 0.62rem; margin-bottom: 6px;
+  color: rgba(245,240,232,0.45);
+  font-weight: 500; letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+input, select, textarea {
+  background: rgba(8,12,8,0.55);
+  border: 1px solid rgba(70,196,85,0.14);
+  color: var(--cream);
+  padding: 0.78rem 0.95rem;
+  border-radius: 10px;
+  outline: none;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 0.88rem;
+  transition: border-color .25s, background .25s, box-shadow .25s;
+  width: 100%;
+}
+input::placeholder, textarea::placeholder { color: rgba(245,240,232,0.25); }
+input:hover, select:hover, textarea:hover { border-color: rgba(70,196,85,0.28); }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--g5);
+  background: rgba(70,196,85,0.05);
+  box-shadow: 0 0 0 3px rgba(70,196,85,0.08);
+}
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2346c455' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+option { background: #0f2010; color: var(--cream); }
+
+/* ── VOICE INPUT PANEL ── */
+.voice-panel {
+  grid-column: span 4;
+  background: rgba(8,12,8,0.6);
+  border: 1px solid rgba(70,196,85,0.2);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: panelIn .3s cubic-bezier(0.16,1,0.3,1);
+}
+.voice-panel.visible { display: flex; }
+@keyframes panelIn {
+  from{ opacity:0; transform:translateY(-8px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+.voice-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.voice-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--g5);
+}
+.voice-label .rec-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--g5);
+}
+.voice-label .rec-dot.live {
+  background: #e53935;
+  box-shadow: 0 0 0 0 rgba(229,57,53,0.4);
+  animation: recordPulse 1s ease-in-out infinite;
+}
+.voice-status {
+  font-size: 0.68rem; color: rgba(245,240,232,0.35);
+  letter-spacing: 0.08em;
+}
+/* The transcription textarea */
+#voiceTranscript {
+  min-height: 80px;
+  resize: vertical;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--cream);
+  background: rgba(70,196,85,0.04);
+  border-color: rgba(70,196,85,0.2);
+}
+#voiceTranscript::placeholder { color: rgba(245,240,232,0.2); font-style: italic; }
+.voice-actions {
+  display: flex; gap: 0.6rem; justify-content: flex-end;
+}
+.v-btn {
+  background: rgba(70,196,85,0.1);
+  border: 1px solid rgba(70,196,85,0.2);
+  color: var(--g5);
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+}
+.v-btn:hover {
+  background: rgba(70,196,85,0.2);
+  border-color: var(--g5);
+}
+.v-btn.danger {
+  background: rgba(229,57,53,0.1);
+  border-color: rgba(229,57,53,0.25);
+  color: #ef9a9a;
+}
+.v-btn.danger:hover { background: rgba(229,57,53,0.2); border-color: #e53935; }
+
+/* ── PHOTO UPLOAD PANEL ── */
+.photo-panel {
+  grid-column: span 4;
+  background: rgba(8,12,8,0.6);
+  border: 1px solid rgba(212,168,58,0.2);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: panelIn .3s cubic-bezier(0.16,1,0.3,1);
+}
+.photo-panel.visible { display: flex; }
+.photo-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.photo-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--gold);
+}
+.photo-label i { font-size: 0.8rem; }
+
+/* Drop zone */
+.drop-zone {
+  border: 1.5px dashed rgba(212,168,58,0.3);
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--gold);
+  background: rgba(212,168,58,0.05);
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+  padding: 0; border: none; background: none;
+}
+.drop-zone-icon {
+  font-size: 1.8rem; color: rgba(212,168,58,0.4);
+  margin-bottom: 0.5rem;
+}
+.drop-zone-text {
+  font-size: 0.82rem; color: rgba(245,240,232,0.4);
+  line-height: 1.5;
+}
+.drop-zone-text span {
+  color: var(--gold); font-weight: 600;
+}
+
+/* Preview grid */
+.photo-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+.preview-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(212,168,58,0.2);
+  aspect-ratio: 1;
+  background: rgba(8,12,8,0.5);
+}
+.preview-item img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.preview-item .remove-photo {
+  position: absolute; top: 4px; right: 4px;
+  width: 20px; height: 20px;
+  background: rgba(8,12,8,0.8);
+  border: 1px solid rgba(229,57,53,0.4);
+  border-radius: 50%;
+  color: #ef9a9a;
+  font-size: 0.6rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .2s;
+}
+.preview-item .remove-photo:hover {
+  background: #e53935; color: white; border-color: #e53935;
+}
+.preview-item .photo-name {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(8,12,8,0.75);
+  font-size: 0.58rem;
+  color: rgba(245,240,232,0.6);
+  padding: 3px 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: 0.04em;
+}
+.photo-count {
+  font-size: 0.68rem;
+  color: rgba(245,240,232,0.3);
+  letter-spacing: 0.08em;
+}
+
+/* SUBMIT */
+.footer-action {
+  grid-column: span 4;
+  display: flex; justify-content: center;
+  margin-top: 1.5rem; padding-top: 1.5rem;
+  border-top: 1px solid rgba(70,196,85,0.1);
+}
+.submit-btn {
+  min-width: 280px;
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--black);
+  background: linear-gradient(135deg, var(--g5), var(--g4));
+  position: relative;
+  overflow: hidden;
+  transition: transform .25s ease, box-shadow .25s ease, letter-spacing .3s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 14px;
+}
+.submit-btn .arr {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(8,12,8,0.2);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; transition: transform .3s;
+}
+.submit-btn:hover {
+  transform: translateY(-2px);
+  letter-spacing: 0.22em;
+  box-shadow: 0 14px 32px rgba(70,196,85,0.35);
+}
+.submit-btn:hover .arr { transform: rotate(45deg); }
+.submit-btn::before {
+  content: ""; position:absolute; inset:0;
+  background: linear-gradient(90deg, transparent, rgba(245,240,232,0.28), transparent);
+  transform: translateX(-120%); transition: transform .7s;
+}
+.submit-btn:hover::before { transform: translateX(120%); }
+.footer {
+  position: relative; z-index:10;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.3rem 3.5rem;
+  border-top: 1px solid rgba(70,196,85,0.07);
+}
+.footer-logo {
+  font-family: 'Syne', sans-serif;
+  font-size:0.95rem; font-weight:800; letter-spacing:-0.02em;
+  color: rgba(245,240,232,0.3);
+}
+.footer-copy { font-size:0.72rem; color: rgba(245,240,232,0.2); letter-spacing:0.06em; }
+.footer-links { display:flex; gap: 1.5rem; }
+.footer-link {
+  font-size:0.72rem; letter-spacing:0.08em;
+  text-transform:uppercase; color: rgba(245,240,232,0.2);
+  text-decoration:none; transition: color .2s;
+}
+.footer-link:hover { color: var(--g5); }
+
+/* Browser not supported notice */
+.no-support-msg {
+  font-size: 0.72rem;
+  color: rgba(229,57,53,0.7);
+  letter-spacing: 0.06em;
+  display: none;
+}
+
+@media (max-width: 1000px) {
+  body { cursor: auto; }
+  .cursor-dot, .cursor-ring { display: none; }
+  .navbar { padding: 1.2rem 1.5rem; }
+  .page-shell { padding: 1.5rem; }
+  .page-top { grid-template-columns: 1fr; }
+  .hero-metrics { justify-content: flex-start; }
+  .grid-system { grid-template-columns: repeat(2, 1fr); }
+  .group-title, .footer-action, .voice-panel, .photo-panel { grid-column: span 2; }
+  .field.full { grid-column: span 2; }
+  .field.half { grid-column: span 1; }
+  .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
+}
+@media (max-width: 560px) {
+  .grid-system { grid-template-columns: 1fr; }
+  .group-title, .footer-action, .field.full, .field.half, .voice-panel, .photo-panel { grid-column: span 1; }
+  .dashboard-container { padding: 1.5rem 1.25rem; }
+  .header-bar { flex-wrap: wrap; gap: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Canvas bg -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Grain -->
+<div class="grain"></div>
+
+<!-- NAV -->
+<nav class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 4 C26 4 30 12 28 22 C20 30 8 28 4 18 C4 10 10 4 17 4Z" fill="rgba(46,140,56,0.25)" stroke="#46c455" stroke-width="1"/>
+        <path d="M17 8 C23 8 27 14 25 20 C20 26 10 24 8 17 C8 12 12 8 17 8Z" fill="rgba(70,196,85,0.15)"/>
+        <line x1="17" y1="28" x2="17" y2="6" stroke="#46c455" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <path d="M17 16 C20 12 24 14 26 18" stroke="#8de898" stroke-width="0.8" fill="none"/>
+        <path d="M17 20 C14 16 10 18 8 22" stroke="#8de898" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    Nutri-Farm<span class="logo-ai">AI</span>
+  </a>
+  <div class="nav-right">
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      <span id="navStatusText">Land AI · Live</span>
+    </div>
+    <select id="landLangSelect" onchange="changeLanguage(this.value)" class="lang-dropdown">
+      <option value="en">English (US)</option>
+      <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="bn">বাংলা (Bengali)</option>
+      <option value="te">తెలుగు (Telugu)</option>
+      <option value="ta">தமிழ் (Tamil)</option>
+      <option value="mr">मराठी (Marathi)</option>
+      <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      <option value="gu">ગુજરાતી (Gujarati)</option>
+      <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+    </select>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<main class="page-shell">
+  <!-- TOP -->
+  <div class="page-top">
+    <div>
+      <div class="badge">
+        <div class="badge-pulse"></div>
+        <span id="heroBadge">Land Intelligence · AI Powered</span>
+      </div>
+      <h1 class="page-title">
+        <span class="t1" id="heroT1">Map the Land.</span>
+        <span class="t2" id="heroT2"> Feed the Future.</span>
+      </h1>
+      <p class="page-sub" id="heroSub">
+        Enter your land's environmental, logistical and crop details. Our AI synthesizes soil, climate and market data to generate a tailor-made strategy for your next harvest.
+      </p>
+    </div>
+    <div class="hero-metrics">
+      <div class="metric"><div class="mv">100%</div><div class="ml">Precision</div></div>
+      <div class="metric-div"></div>
+      <div class="metric"><div class="mv">AI</div><div class="ml">Driven</div></div>
+      <div class="metric-div"></div>
+      <div class="metric"><div class="mv">9+</div><div class="ml">Languages</div></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD CARD -->
+  <div class="dashboard-container">
+    <div class="header-bar">
+      <div class="header-left">
+        <div class="chip">
+          <div class="mini-dot"></div>
+          <span id="chipText">Real-time · Secure</span>
+        </div>
+        <h2 class="section-title" id="landDetailsTitle">Land Intelligence Dashboard</h2>
+      </div>
+      <div class="ai-tools">
+        <!-- MIC BUTTON -->
+        <div class="ai-btn" id="micBtn" title="Voice Input — describe your land" onclick="toggleVoice()">
+          <i class="fas fa-microphone" id="micIcon"></i>
+        </div>
+        <!-- CAMERA BUTTON -->
+        <div class="ai-btn" id="camBtn" title="Upload Soil Photos" onclick="togglePhoto()">
+          <i class="fas fa-camera"></i>
+        </div>
+      </div>
+    </div>
+
+    <form onsubmit="handleLandSubmit(event)">
+      <div class="grid-system">
+
+        <!-- ── VOICE PANEL (hidden by default, shown when mic clicked) ── -->
+        <div class="voice-panel" id="voicePanel">
+          <div class="voice-panel-header">
+            <div class="voice-label">
+              <div class="rec-dot" id="recDot"></div>
+              <span id="voicePanelLabel">Voice Notes — Describe Your Land</span>
+            </div>
+            <span class="voice-status" id="voiceStatus">Click mic to start recording</span>
+          </div>
+          <!-- TRANSCRIPTION DISPLAY BOX 1: Live (interim) results -->
+          <div style="position:relative;">
+            <label style="color: rgba(70,196,85,0.6);">Live Transcription</label>
+            <textarea
+              id="voiceInterim"
+              placeholder="🎙 Speak now… your words will appear here in real-time as you talk"
+              readonly
+              style="min-height:60px; resize:none; border-color:rgba(70,196,85,0.15); color:rgba(245,240,232,0.5); font-style:italic;"
+            ></textarea>
+          </div>
+          <!-- TRANSCRIPTION DISPLAY BOX 2: Final confirmed transcript -->
+          <div>
+            <label style="color: rgba(70,196,85,0.6);">Confirmed Transcript</label>
+            <textarea
+              id="voiceTranscript"
+              placeholder="✅ Finalized speech will appear here — you can also type or edit directly"
+              style="min-height:90px; resize:vertical;"
+            ></textarea>
+          </div>
+          <div class="voice-actions">
+            <span class="no-support-msg" id="noSupportMsg">⚠ Speech recognition not supported in this browser. Try Chrome.</span>
+            <button type="button" class="v-btn danger" onclick="clearTranscript()">
+              <i class="fas fa-trash-alt"></i> Clear
+            </button>
+            <button type="button" class="v-btn" onclick="copyTranscript()">
+              <i class="fas fa-copy"></i> Copy
+            </button>
+            <button type="button" class="v-btn" onclick="toggleVoice()" id="micToggleBtn">
+              <i class="fas fa-microphone"></i> Start Recording
+            </button>
+          </div>
+        </div>
+
+        <!-- ── PHOTO PANEL (hidden by default, shown when camera clicked) ── -->
+        <div class="photo-panel" id="photoPanel">
+          <div class="photo-panel-header">
+            <div class="photo-label">
+              <i class="fas fa-images"></i>
+              <span>Soil & Land Photos</span>
+            </div>
+            <span class="photo-count" id="photoCount">0 photos uploaded</span>
+          </div>
+          <!-- Drop zone / file input -->
+          <div class="drop-zone" id="dropZone">
+            <input
+              type="file"
+              id="photoInput"
+              accept="image/*"
+              multiple
+              onchange="handlePhotoUpload(this.files)"
+            />
+            <div class="drop-zone-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <div class="drop-zone-text">
+              <span>Click to upload</span> or drag & drop photos here<br>
+              <span style="color:rgba(245,240,232,0.3); font-size:0.75rem;">JPG, PNG, WEBP — up to 10 photos</span>
+            </div>
+          </div>
+          <!-- Preview grid: uploaded images show here -->
+          <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+        </div>
+
+        <!-- ── SECTION 01: Environmental Data ── -->
+        <div class="group-title">
+          <span id="gt1">Environmental Data</span>
+          <span class="gt-num">01</span>
+        </div>
+        <div class="field">
+          <label id="areaLabel">Land Area (Acres)</label>
+          <input type="number" step="0.1" id="landArea" required placeholder="0.0">
+        </div>
+        <div class="field">
+          <label id="soilLabel">Soil Type</label>
+          <select id="soilType">
+            <option value="Loamy">Loamy</option>
+            <option value="Clay">Clay</option>
+            <option value="Sandy">Sandy</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="phLabel">Soil pH</label>
+          <input type="number" step="0.1" id="soilPH" placeholder="6.5">
+        </div>
+        <div class="field">
+          <label id="waterLabel">Water Source</label>
+          <select id="waterSource">
+            <option value="Rainfed" id="optRainfed">Rainfed</option>
+            <option value="Borewell" id="optBorewell">Borewell</option>
+            <option value="Canal" id="optCanal">Canal</option>
+            <option value="Pond" id="optPond">Pond</option>
+          </select>
+        </div>
+
+        <!-- ── SECTION 02: Logistics ── -->
+        <div class="group-title">
+          <span id="gt2">Logistics &amp; Infrastructure</span>
+          <span class="gt-num">02</span>
+        </div>
+        <div class="field">
+          <label id="irrigationLabel">Irrigation Status</label>
+          <select id="irrigationAvail">
+            <option value="Yes" id="optIrrigYes">Available</option>
+            <option value="Partial" id="optIrrigPartial">Partial</option>
+            <option value="No" id="optIrrigNo">None</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="seasonLabel">Active Season</label>
+          <select id="season">
+            <option value="Kharif">Kharif (Monsoon)</option>
+            <option value="Rabi">Rabi (Winter)</option>
+            <option value="Zaid">Zaid (Summer)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="investLabel">Investment Budget</label>
+          <select id="investment" required>
+            <option value="" disabled selected>Select Capacity</option>
+            <option value="low">Low Capacity</option>
+            <option value="medium">Medium Capacity</option>
+            <option value="high">High Capacity</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="fertLabel">Resource Intensity</label>
+          <select id="fertilizer" required>
+            <option value="" disabled selected>Fertilizer Usage</option>
+            <option value="organic">Organic Only</option>
+            <option value="chemical">Chemical Only</option>
+            <option value="mixed">Mixed Usage</option>
+          </select>
+        </div>
+
+        <!-- ── SECTION 03: Crop Lifecycle ── -->
+        <div class="group-title">
+          <span id="gt3">Crop Lifecycle</span>
+          <span class="gt-num">03</span>
+        </div>
+        <div class="field">
+          <label id="prevCropLabel">Previous Crop</label>
+          <select id="prevCrop">
+            <option value="Wheat">Wheat</option>
+            <option value="Rice">Rice</option>
+            <option value="Maize">Maize</option>
+            <option value="Cotton">Cotton</option>
+            <option value="Groundnut">Groundnut</option>
+            <option value="Millet">Millet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="currCropLabel">Current Crop</label>
+          <select id="currCrop">
+            <option value="Wheat">Wheat</option>
+            <option value="Rice">Rice</option>
+            <option value="Maize">Maize</option>
+            <option value="Cotton">Cotton</option>
+            <option value="Groundnut">Groundnut</option>
+            <option value="Millet">Millet</option>
+          </select>
+        </div>
+
+        <!-- SUBMIT -->
+        <div class="footer-action">
+          <button type="submit" class="submit-btn" id="saveLandBtn">
+            <span id="saveLandBtnText">Generate AI Strategy</span>
+            <span class="arr">→</span>
+          </button>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">Nutri-Farm<span style="color:var(--gold)">AI</span></div>
+  <div class="footer-copy">© 2025 · Powered by Intelligence, Grown by Nature</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Support</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+<script>
+/* ─────────────────────────────────────────────
+   CURSOR
+───────────────────────────────────────────── */
+const dot=document.getElementById('cursorDot'), ring=document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function loop(){rx+=(mx-rx)*0.14;ry+=(my-ry)*0.14;
+dot.style.left=mx+'px';dot.style.top=my+'px';
+ring.style.left=rx+'px';ring.style.top=ry+'px';
+requestAnimationFrame(loop);})();
+
+/* ─────────────────────────────────────────────
+   PARTICLE CANVAS
+───────────────────────────────────────────── */
+const canvas=document.getElementById('bgCanvas'), ctx=canvas.getContext('2d');
+let W,H,particles=[];
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+class Particle{
+  constructor(){this.reset();}
+  reset(){this.x=Math.random()*W;this.y=Math.random()*H;
+    this.vx=(Math.random()-0.5)*0.32;this.vy=(Math.random()-0.5)*0.32;
+    this.r=Math.random()*1.8+0.4;this.a=Math.random()*0.5+0.1;
+    this.life=0;this.maxLife=Math.random()*400+200;}
+  update(){this.x+=this.vx;this.y+=this.vy;this.life++;
+    if(this.x<0||this.x>W||this.y<0||this.y>H||this.life>this.maxLife)this.reset();}
+  draw(){const f=Math.min(this.life/40,1)*Math.min((this.maxLife-this.life)/40,1);
+    ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(70,196,85,${this.a*f})`;ctx.fill();}
+}
+for(let i=0;i<110;i++)particles.push(new Particle());
+function drawLines(){for(let i=0;i<particles.length;i++)for(let j=i+1;j<particles.length;j++){
+  const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);
+  if(d<100){ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);
+    ctx.lineTo(particles[j].x,particles[j].y);
+    ctx.strokeStyle=`rgba(46,140,56,${0.12*(1-d/100)})`;ctx.lineWidth=0.5;ctx.stroke();}}}
+function animCanvas(){ctx.clearRect(0,0,W,H);
+  const g=ctx.createRadialGradient(W*0.5,H*0.35,0,W*0.5,H*0.35,H*0.8);
+  g.addColorStop(0,'rgba(26,90,32,0.07)');g.addColorStop(0.5,'rgba(15,32,16,0.03)');g.addColorStop(1,'rgba(8,12,8,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  drawLines();particles.forEach(p=>{p.update();p.draw();});
+  requestAnimationFrame(animCanvas);}
+animCanvas();
+
+/* ─────────────────────────────────────────────
+   VOICE / SPEECH RECOGNITION  (Chrome-safe)
+   Key fixes:
+   1. Never auto-restart in onend — Chrome kills
+      interim results in a restart loop
+   2. Use a fresh SpeechRecognition instance each
+      time — Chrome reuses state and breaks
+   3. Safe lang codes only — or-IN / pa-IN crash
+      Chrome's speech engine silently
+   4. Guard against double-start with a flag
+───────────────────────────────────────────── */
+let recognition    = null;
+let isRecording    = false;
+let finalTranscript = '';
+let startGuard     = false;   // prevents double-click race
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+// Chrome-safe language map — or/pa fall back to hi-IN
+// (Chrome silently fails on or-IN / pa-IN)
+const LANG_MAP = {
+  en: 'en-IN',
+  hi: 'hi-IN',
+  bn: 'bn-BD',
+  te: 'te-IN',
+  ta: 'ta-IN',
+  mr: 'mr-IN',
+  kn: 'kn-IN',
+  gu: 'gu-IN',
+  or: 'hi-IN',   // Odia not in Chrome — nearest fallback
+  pa: 'pa-IN',
+};
+
+function setUI(recording) {
+  const dot     = document.getElementById('recDot');
+  const status  = document.getElementById('voiceStatus');
+  const toggleB = document.getElementById('micToggleBtn');
+  const micBtn  = document.getElementById('micBtn');
+  const micIcon = document.getElementById('micIcon');
+
+  if (recording) {
+    dot.classList.add('live');
+    status.textContent = '🔴 Listening… speak clearly into your mic';
+    toggleB.innerHTML  = '<i class="fas fa-stop"></i> Stop Recording';
+    micBtn.classList.add('recording');
+    micIcon.className  = 'fas fa-stop';
+  } else {
+    dot.classList.remove('live');
+    status.textContent = 'Recording stopped — edit transcript below if needed';
+    toggleB.innerHTML  = '<i class="fas fa-microphone"></i> Start Recording';
+    micBtn.classList.remove('recording');
+    micIcon.className  = 'fas fa-microphone';
+    document.getElementById('voiceInterim').value = '';
+  }
+}
+
+function startRecognition() {
+  if (startGuard) return;
+  startGuard = true;
+
+  // Always create a FRESH instance — Chrome breaks on reuse
+  recognition = new SpeechRecognition();
+
+  const uiLang = document.getElementById('landLangSelect').value;
+  recognition.lang           = LANG_MAP[uiLang] || 'en-IN';
+  recognition.continuous     = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    startGuard  = false;
+    setUI(true);
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    // Only loop from resultIndex — avoids re-reading old finals
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+      } else {
+        interim = transcript;   // show the latest partial only
+      }
+    }
+    document.getElementById('voiceInterim').value   = interim;
+    document.getElementById('voiceTranscript').value = finalTranscript.trim();
+  };
+
+  recognition.onerror = (e) => {
+    startGuard = false;
+    const msgs = {
+      'not-allowed'  : '⚠ Mic blocked — click the 🔒 icon in your address bar and allow microphone',
+      'no-speech'    : 'No speech heard — try speaking louder or closer to mic',
+      'network'      : '⚠ Network error — check your internet connection',
+      'audio-capture': '⚠ No microphone found on this device',
+      'aborted'      : 'Recording was stopped',
+    };
+    document.getElementById('voiceStatus').textContent =
+      msgs[e.error] || ('Error: ' + e.error);
+    isRecording = false;
+    setUI(false);
+  };
+
+  // onend fires when Chrome auto-stops (usually after ~60s silence)
+  // DO NOT auto-restart here — it kills interim results in Chrome
+  recognition.onend = () => {
+    startGuard = false;
+    if (isRecording) {
+      // Chrome stopped on its own (timeout/silence) — update UI
+      isRecording = false;
+      setUI(false);
+      document.getElementById('voiceStatus').textContent =
+        'Stopped (Chrome auto-timeout) — click Start to continue';
+    }
+  };
+
+  try {
+    recognition.start();
+  } catch (err) {
+    startGuard = false;
+    document.getElementById('voiceStatus').textContent =
+      'Could not start mic: ' + err.message;
+  }
+}
+
+function stopRecording() {
+  isRecording = false;
+  startGuard  = false;
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+    recognition = null;
+  }
+  setUI(false);
+}
+
+function toggleVoice() {
+  // Always open the panel
+  const panel = document.getElementById('voicePanel');
+  if (!panel.classList.contains('visible')) {
+    panel.classList.add('visible');
+    setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'nearest' }), 50);
+  }
+
+  if (!SpeechRecognition) {
+    document.getElementById('noSupportMsg').style.display = 'inline';
+    document.getElementById('voiceStatus').textContent =
+      '⚠ Not supported — use Chrome or Edge';
+    return;
+  }
+
+  if (!isRecording) {
+    startRecognition();
+  } else {
+    stopRecording();
+  }
+}
+
+function togglePhoto() {
+  const panel = document.getElementById('photoPanel');
+  panel.classList.toggle('visible');
+  if (panel.classList.contains('visible')) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function clearTranscript() {
+  finalTranscript = '';
+  document.getElementById('voiceTranscript').value = '';
+  document.getElementById('voiceInterim').value = '';
+  document.getElementById('voiceStatus').textContent = 'Cleared — click Start Recording to begin again';
+}
+
+function copyTranscript() {
+  const text = document.getElementById('voiceTranscript').value;
+  if (!text.trim()) { alert('Nothing to copy yet.'); return; }
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.v-btn:not(.danger)');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+  });
+}
+
+/* ─────────────────────────────────────────────
+   PHOTO UPLOAD & PREVIEW
+───────────────────────────────────────────── */
+let uploadedPhotos = []; // store { file, url, name }
+
+function handlePhotoUpload(files) {
+  const MAX = 10;
+  const grid = document.getElementById('photoPreviewGrid');
+
+  Array.from(files).forEach(file => {
+    if (uploadedPhotos.length >= MAX) {
+      alert(`Maximum ${MAX} photos allowed.`);
+      return;
+    }
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const url = e.target.result;
+      const id  = Date.now() + Math.random();
+      uploadedPhotos.push({ id, url, name: file.name });
+
+      // Build preview card
+      const item = document.createElement('div');
+      item.className = 'preview-item';
+      item.id = 'photo-' + id;
+      item.innerHTML = `
+        <img src="${url}" alt="${file.name}" />
+        <div class="photo-name">${file.name}</div>
+        <div class="remove-photo" onclick="removePhoto('${id}')">
+          <i class="fas fa-times"></i>
+        </div>
+      `;
+      grid.appendChild(item);
+      updatePhotoCount();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removePhoto(id) {
+  uploadedPhotos = uploadedPhotos.filter(p => p.id != id);
+  const el = document.getElementById('photo-' + id);
+  if (el) {
+    el.style.opacity = '0';
+    el.style.transform = 'scale(0.8)';
+    el.style.transition = 'all .2s';
+    setTimeout(() => el.remove(), 200);
+  }
+  updatePhotoCount();
+}
+
+function updatePhotoCount() {
+  const n = uploadedPhotos.length;
+  document.getElementById('photoCount').textContent =
+    n === 0 ? '0 photos uploaded' : `${n} photo${n>1?'s':''} uploaded`;
+}
+
+// Drag and drop support
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handlePhotoUpload(e.dataTransfer.files);
+});
+
+/* ─────────────────────────────────────────────
+   i18n
+───────────────────────────────────────────── */
+const i18n = {
+  en: { badge:'Land Intelligence · AI Powered', t1:'Map the Land.', t2:' Feed the Future.',
+    sub:'Enter your land\'s environmental, logistical and crop details. Our AI synthesizes soil, climate and market data to generate a tailor-made strategy for your next harvest.',
+    chip:'Real-time · Secure', nav:'Land AI · Live',
+    title:'Land Intelligence Dashboard',
+    g1:'Environmental Data', g2:'Logistics & Infrastructure', g3:'Crop Lifecycle',
+    area:'Land Area (Acres)', soil:'Soil Type', ph:'Soil pH', water:'Water Source',
+    irrig:'Irrigation Status', season:'Active Season', invest:'Investment Budget', fert:'Resource Intensity',
+    prev:'Previous Crop', curr:'Current Crop', save:'Generate AI Strategy' },
+  or: { badge:'ଭୂମି ଇଣ୍ଟେଲିଜେନ୍ସ · AI ଚାଳିତ', t1:'ଭୂମିକୁ ମ୍ୟାପ୍ କରନ୍ତୁ.', t2:' ଭବିଷ୍ୟତକୁ ଖାଇବାକୁ ଦିଅନ୍ତୁ.',
+    sub:'ଆପଣଙ୍କ ଜମିର ବିବରଣୀ ଦିଅନ୍ତୁ — AI ମାଟି, ଜଳବାୟୁ ଓ ବଜାର ତଥ୍ୟରୁ ରଣନୀତି ସୃଷ୍ଟି କରିବ.',
+    chip:'ରିଅଲ୍-ଟାଇମ୍ · ସୁରକ୍ଷିତ', nav:'ଭୂମି AI · ଲାଇଭ୍',
+    title:'ଭୂମି ଇଣ୍ଟେଲିଜେନ୍ସ ଡ୍ୟାଶବୋର୍ଡ',
+    g1:'ପରିବେଶ ତଥ୍ୟ', g2:'ଲଜିଷ୍ଟିକ୍ସ ଓ ଭିତ୍ତିଭୂମି', g3:'ଫସଲ ଜୀବନଚକ୍ର',
+    area:'ଜମି ପରିମାଣ (ଏକର)', soil:'ମାଟି ପ୍ରକାର', ph:'ମାଟିର pH', water:'ଜଳ ସ୍ରୋତ',
+    irrig:'ସିଞ୍ଚନ ସ୍ଥିତି', season:'ସକ୍ରିୟ ଋତୁ', invest:'ବିନିଯୋଗ ବଜେଟ୍', fert:'ସମ୍ବଳ ତୀବ୍ରତା',
+    prev:'ପୂର୍ବ ଫସଲ', curr:'ବର୍ତ୍ତମାନ ଫସଲ', save:'AI ରଣନୀତି ସୃଷ୍ଟି କରନ୍ତୁ' },
+  hi: { badge:'भूमि इंटेलिजेंस · AI संचालित', t1:'भूमि को मानचित्र करें।', t2:' भविष्य को पोषण दें।',
+    sub:'अपनी भूमि का विवरण दर्ज करें — AI मिट्टी, जलवायु और बाज़ार डेटा से रणनीति तैयार करेगा।',
+    chip:'रीयल-टाइम · सुरक्षित', nav:'भूमि AI · लाइव',
+    title:'भूमि इंटेलिजेंस डैशबोर्ड',
+    g1:'पर्यावरण डेटा', g2:'लॉजिस्टिक्स व बुनियादी ढाँचा', g3:'फ़सल जीवनचक्र',
+    area:'भूमि क्षेत्र (एकड़)', soil:'मिट्टी प्रकार', ph:'मिट्टी pH', water:'जल स्रोत',
+    irrig:'सिंचाई स्थिति', season:'सक्रिय मौसम', invest:'निवेश बजट', fert:'संसाधन तीव्रता',
+    prev:'पिछली फ़सल', curr:'वर्तमान फ़सल', save:'AI रणनीति बनाएं' },
+  bn: { badge:'ভূমি ইন্টেলিজেন্স · AI চালিত', t1:'ভূমি মানচিত্র করুন।', t2:' ভবিষ্যৎকে পুষ্টি দিন।',
+    sub:'আপনার জমির বিবরণ দিন — AI মাটি, জলবায়ু ও বাজার থেকে কৌশল তৈরি করবে।',
+    chip:'রিয়েল-টাইম · সুরক্ষিত', nav:'ভূমি AI · লাইভ',
+    title:'ভূমি ইন্টেলিজেন্স ড্যাশবোর্ড',
+    g1:'পরিবেশ তথ্য', g2:'লজিস্টিকস ও অবকাঠামো', g3:'ফসল জীবনচক্র',
+    area:'জমির পরিমাণ (একর)', soil:'মাটির ধরন', ph:'মাটির pH', water:'জল উৎস',
+    irrig:'সেচ অবস্থা', season:'সক্রিয় মৌসুম', invest:'বিনিয়োগ বাজেট', fert:'সম্পদ নিবিড়তা',
+    prev:'পূর্ববর্তী ফসল', curr:'বর্তমান ফসল', save:'AI কৌশল তৈরি করুন' },
+  te: { badge:'భూమి ఇంటెలిజెన్స్ · AI ఆధారిత', t1:'భూమిని మ్యాప్ చేయండి.', t2:' భవిష్యత్తును పోషించండి.',
+    sub:'మీ భూమి వివరాలు నమోదు చేయండి — AI మట్టి, వాతావరణం, మార్కెట్ నుండి వ్యూహం రూపొందిస్తుంది.',
+    chip:'రియల్-టైమ్ · సురక్షితం', nav:'భూమి AI · లైవ్',
+    title:'భూమి ఇంటెలిజెన్స్ డాష్‌బోర్డ్',
+    g1:'పర్యావరణ డేటా', g2:'లాజిస్టిక్స్ & మౌలిక సదుపాయాలు', g3:'పంట జీవితచక్రం',
+    area:'భూమి విస్తీర్ణం (ఎకరాలు)', soil:'నేల రకం', ph:'నేల pH', water:'నీటి వనరు',
+    irrig:'నీటిపారుదల స్థితి', season:'యాక్టివ్ సీజన్', invest:'పెట్టుబడి బడ్జెట్', fert:'వనరుల తీవ్రత',
+    prev:'గత పంట', curr:'ప్రస్తుత పంట', save:'AI వ్యూహం రూపొందించండి' },
+  ta: { badge:'நில நுண்ணறிவு · AI இயக்கம்', t1:'நிலத்தை வரைபடம் செய்.', t2:' எதிர்காலத்தை ஊட்டு.',
+    sub:'உங்கள் நில விவரங்களை உள்ளிடவும் — AI மண், காலநிலை, சந்தை தரவு மூலம் உத்தியை உருவாக்கும்.',
+    chip:'நேரடி · பாதுகாப்பு', nav:'நிலம் AI · நேரடி',
+    title:'நில நுண்ணறிவு டாஷ்போர்டு',
+    g1:'சுற்றுச்சூழல் தரவு', g2:'தளவாடம் & உள்கட்டமைப்பு', g3:'பயிர் வாழ்க்கைச்சுழற்சி',
+    area:'நில பரப்பு (ஏக்கர்)', soil:'மண் வகை', ph:'மண் pH', water:'நீர் ஆதாரம்',
+    irrig:'நீர்ப்பாசன நிலை', season:'செயலில் பருவம்', invest:'முதலீட்டு பட்ஜெட்', fert:'வள தீவிரம்',
+    prev:'முந்தைய பயிர்', curr:'தற்போதைய பயிர்', save:'AI உத்தியை உருவாக்கு' },
+  mr: { badge:'भूमि इंटेलिजन्स · AI चालित', t1:'भूमी मॅप करा.', t2:' भविष्यास पोषण द्या.',
+    sub:'तुमच्या जमिनीचे तपशील द्या — AI माती, हवामान व बाजारातून रणनीती तयार करेल.',
+    chip:'रीअल-टाइम · सुरक्षित', nav:'भूमी AI · थेट',
+    title:'भूमि इंटेलिजन्स डॅशबोर्ड',
+    g1:'पर्यावरणीय डेटा', g2:'लॉजिस्टिक्स व पायाभूत सुविधा', g3:'पीक जीवनचक्र',
+    area:'जमीन क्षेत्र (एकर)', soil:'माती प्रकार', ph:'माती pH', water:'पाणी स्रोत',
+    irrig:'सिंचन स्थिती', season:'सक्रिय हंगाम', invest:'गुंतवणूक बजेट', fert:'संसाधन तीव्रता',
+    prev:'मागील पीक', curr:'सध्याचे पीक', save:'AI रणनीती तयार करा' },
+  kn: { badge:'ಭೂಮಿ ಇಂಟೆಲಿಜೆನ್ಸ್ · AI ಚಾಲಿತ', t1:'ಭೂಮಿಯನ್ನು ಮ್ಯಾಪ್ ಮಾಡಿ.', t2:' ಭವಿಷ್ಯವನ್ನು ಪೋಷಿಸಿ.',
+    sub:'ನಿಮ್ಮ ಭೂಮಿಯ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ — AI ಮಣ್ಣು, ಹವಾಮಾನ, ಮಾರುಕಟ್ಟೆಯಿಂದ ತಂತ್ರ ರಚಿಸುತ್ತದೆ.',
+    chip:'ರಿಯಲ್-ಟೈಮ್ · ಸುರಕ್ಷಿತ', nav:'ಭೂಮಿ AI · ಲೈವ್',
+    title:'ಭೂಮಿ ಇಂಟೆಲಿಜೆನ್ಸ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್',
+    g1:'ಪರಿಸರ ಡೇಟಾ', g2:'ಲಾಜಿಸ್ಟಿಕ್ಸ್ & ಮೂಲಸೌಕರ್ಯ', g3:'ಬೆಳೆ ಜೀವನಚಕ್ರ',
+    area:'ಭೂಮಿ ವಿಸ್ತೀರ್ಣ (ಎಕರೆ)', soil:'ಮಣ್ಣು ಪ್ರಕಾರ', ph:'ಮಣ್ಣು pH', water:'ನೀರಿನ ಮೂಲ',
+    irrig:'ನೀರಾವರಿ ಸ್ಥಿತಿ', season:'ಸಕ್ರಿಯ ಋತು', invest:'ಹೂಡಿಕೆ ಬಜೆಟ್', fert:'ಸಂಪನ್ಮೂಲ ತೀವ್ರತೆ',
+    prev:'ಹಿಂದಿನ ಬೆಳೆ', curr:'ಪ್ರಸ್ತುತ ಬೆಳೆ', save:'AI ತಂತ್ರ ರಚಿಸಿ' },
+  gu: { badge:'જમીન ઇન્ટેલિજન્સ · AI સંચાલિત', t1:'જમીન મેપ કરો.', t2:' ભવિષ્યને પોષણ આપો.',
+    sub:'તમારી જમીનની વિગતો દાખલ કરો — AI માટી, આબોહવા અને બજારમાંથી વ્યૂહ બનાવશે.',
+    chip:'રીઅલ-ટાઈમ · સુરક્ષિત', nav:'જમીન AI · લાઈવ',
+    title:'જમીન ઇન્ટેલિજન્સ ડેશબોર્ડ',
+    g1:'પર્યાવરણ ડેટા', g2:'લોજિસ્ટિક્સ અને ઇન્ફ્રાસ્ટ્રક્ચર', g3:'પાક જીવનચક્ર',
+    area:'જમીન વિસ્તાર (એકર)', soil:'માટી પ્રકાર', ph:'માટી pH', water:'પાણી સ્ત્રોત',
+    irrig:'સિંચાઈ સ્થિતિ', season:'સક્રિય ઋતુ', invest:'રોકાણ બજેટ', fert:'સંસાધન તીવ્રતા',
+    prev:'પાછલો પાક', curr:'વર્તમાન પાક', save:'AI વ્યૂહ બનાવો' },
+  pa: { badge:'ਜ਼ਮੀਨ ਇੰਟੈਲੀਜੈਂਸ · AI ਚਾਲਿਤ', t1:'ਜ਼ਮੀਨ ਨੂੰ ਮੈਪ ਕਰੋ.', t2:' ਭਵਿੱਖ ਨੂੰ ਪੋਸ਼ਣ ਦਿਓ.',
+    sub:'ਆਪਣੀ ਜ਼ਮੀਨ ਦੇ ਵੇਰਵੇ ਦਰਜ ਕਰੋ — AI ਮਿੱਟੀ, ਮੌਸਮ, ਬਾਜ਼ਾਰ ਤੋਂ ਰਣਨੀਤੀ ਬਣਾਏਗਾ.',
+    chip:'ਰੀਅਲ-ਟਾਈਮ · ਸੁਰੱਖਿਅਤ', nav:'ਜ਼ਮੀਨ AI · ਲਾਈਵ',
+    title:'ਜ਼ਮੀਨ ਇੰਟੈਲੀਜੈਂਸ ਡੈਸ਼ਬੋਰਡ',
+    g1:'ਵਾਤਾਵਰਣ ਡਾਟਾ', g2:'ਲੌਜਿਸਟਿਕਸ ਤੇ ਬੁਨਿਆਦੀ ਢਾਂਚਾ', g3:'ਫ਼ਸਲ ਜੀਵਨਚੱਕਰ',
+    area:'ਜ਼ਮੀਨ ਖੇਤਰ (ਏਕੜ)', soil:'ਮਿੱਟੀ ਕਿਸਮ', ph:'ਮਿੱਟੀ pH', water:'ਪਾਣੀ ਸਰੋਤ',
+    irrig:'ਸਿੰਚਾਈ ਸਥਿਤੀ', season:'ਸਰਗਰਮ ਮੌਸਮ', invest:'ਨਿਵੇਸ਼ ਬਜਟ', fert:'ਸਰੋਤ ਤੀਬਰਤਾ',
+    prev:'ਪਿਛਲੀ ਫ਼ਸਲ', curr:'ਮੌਜੂਦਾ ਫ਼ਸਲ', save:'AI ਰਣਨੀਤੀ ਬਣਾਓ' }
+};
+
+const __orig = (typeof window.changeLanguage === 'function') ? window.changeLanguage : null;
+window.changeLanguage = function(lang){
+  const d = i18n[lang] || i18n.en;
+  const set = (id,v)=>{const el=document.getElementById(id); if(el && typeof v==='string') el.textContent=v;};
+  set('heroBadge', d.badge); set('heroT1', d.t1); set('heroT2', d.t2); set('heroSub', d.sub);
+  set('chipText', d.chip); set('navStatusText', d.nav); set('landDetailsTitle', d.title);
+  set('gt1', d.g1); set('gt2', d.g2); set('gt3', d.g3);
+  set('areaLabel', d.area); set('soilLabel', d.soil);
+  set('phLabel', d.ph); set('waterLabel', d.water);
+  set('irrigationLabel', d.irrig); set('seasonLabel', d.season);
+  set('investLabel', d.invest); set('fertLabel', d.fert);
+  set('prevCropLabel', d.prev); set('currCropLabel', d.curr);
+  set('saveLandBtnText', d.save);
+  // If recording, restart with new language
+  if (isRecording) {
+    stopRecording();
+    setTimeout(() => startRecognition(), 300);
+  }
+  try { __orig && __orig(lang); } catch(e) {}
+};
+window.changeLanguage('en');
+</script>
+<script src="mobile.js"></script>
+</body>
+</html>
