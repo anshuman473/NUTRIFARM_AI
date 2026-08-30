@@ -4,9 +4,27 @@
 const SUPABASE_URL = "https://cjuxhwshdxyquiizyfjs.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqdXhod3NoZHh5cXVpaXp5ZmpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4OTAyNTAsImV4cCI6MjA4NjQ2NjI1MH0.5tCe2vtpHpr34U9qFKT8zgt9-4cueDyaoM014elr6vM";
 
-// Initialize Supabase
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Initialize Supabase — guarded. If the CDN script fails to load (slow
+// wifi, ad-blocker, CDN hiccup — very possible during a live demo), this
+// used to throw here and silently kill EVERY function defined below it in
+// this file, including ones that have nothing to do with Supabase. Now a
+// failure here is contained to just the features that actually need it.
+let sb = null;
+try {
+  if (typeof supabase === "undefined") {
+    throw new Error("Supabase SDK did not load from CDN");
+  }
+  const { createClient } = supabase;
+  sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch (err) {
+  console.error("Supabase init failed — login/save features will be unavailable:", err);
+  window.addEventListener("DOMContentLoaded", () => {
+    const banner = document.createElement("div");
+    banner.textContent = "⚠ Connection issue — login, saving, and AI predictions may not work. Check your internet connection and refresh.";
+    banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:10px 16px;text-align:center;font-size:14px;font-family:sans-serif;";
+    document.body.prepend(banner);
+  });
+}
 
 /* ============================================================
    1. GLOBAL DICTIONARY (ALL 10 LANGUAGES)
@@ -527,10 +545,16 @@ window.onload = async function() {
     if (document.getElementById("homeLangSelect")) document.getElementById("homeLangSelect").value = savedLang;
     applyTranslations();
 
-    const { data: { user } } = await sb.auth.getUser();
-    if (user && document.getElementById("welcomeUser")) {
-        const { data } = await sb.from('farmers').select('*').eq('id', user.id).single();
-        if (data) document.getElementById("welcomeUser").innerText = "Welcome, " + data.name;
+    if (sb) {
+        try {
+            const { data: { user } } = await sb.auth.getUser();
+            if (user && document.getElementById("welcomeUser")) {
+                const { data } = await sb.from('farmers').select('*').eq('id', user.id).single();
+                if (data) document.getElementById("welcomeUser").innerText = "Welcome, " + data.name;
+            }
+        } catch (err) {
+            console.error("Could not load user greeting:", err);
+        }
     }
     const greetingEl = document.getElementById("greetingText");
     if (greetingEl) {
