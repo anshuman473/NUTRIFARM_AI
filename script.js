@@ -4,27 +4,9 @@
 const SUPABASE_URL = "https://cjuxhwshdxyquiizyfjs.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqdXhod3NoZHh5cXVpaXp5ZmpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4OTAyNTAsImV4cCI6MjA4NjQ2NjI1MH0.5tCe2vtpHpr34U9qFKT8zgt9-4cueDyaoM014elr6vM";
 
-// Initialize Supabase — guarded. If the CDN script fails to load (slow
-// wifi, ad-blocker, CDN hiccup — very possible during a live demo), this
-// used to throw here and silently kill EVERY function defined below it in
-// this file, including ones that have nothing to do with Supabase. Now a
-// failure here is contained to just the features that actually need it.
-let sb = null;
-try {
-  if (typeof supabase === "undefined") {
-    throw new Error("Supabase SDK did not load from CDN");
-  }
-  const { createClient } = supabase;
-  sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-} catch (err) {
-  console.error("Supabase init failed — login/save features will be unavailable:", err);
-  window.addEventListener("DOMContentLoaded", () => {
-    const banner = document.createElement("div");
-    banner.textContent = "⚠ Connection issue — login, saving, and AI predictions may not work. Check your internet connection and refresh.";
-    banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:10px 16px;text-align:center;font-size:14px;font-family:sans-serif;";
-    document.body.prepend(banner);
-  });
-}
+// Initialize Supabase
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ============================================================
    1. GLOBAL DICTIONARY (ALL 10 LANGUAGES)
@@ -373,8 +355,7 @@ async function handlePhoneLogin(event) {
    ============================================================ */
 // Same-origin Flask backend (app.py serves this frontend directly).
 // If you deploy the frontend separately, point this at the backend's URL.
-// Live backend deployed on Render
-const API_BASE = "https://nutrifarm-ai.onrender.com";
+const API_BASE = "";
 
 async function handleLandSubmit(event) {
     event.preventDefault();
@@ -456,6 +437,37 @@ async function handleLandSubmit(event) {
     }
 }
 
+/* ─── LOCATION CAPTURE (for "find this dish near me" feature) ─── */
+function captureLocation() {
+    const statusEl = document.getElementById("locStatus");
+    const btnEl = document.getElementById("detectLocBtn");
+    if (!statusEl) return;
+
+    if (!navigator.geolocation) {
+        statusEl.textContent = "Geolocation not supported on this browser.";
+        return;
+    }
+
+    statusEl.textContent = "Detecting...";
+    if (btnEl) btnEl.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            document.getElementById("userLat").value = pos.coords.latitude;
+            document.getElementById("userLng").value = pos.coords.longitude;
+            statusEl.textContent = "✓ Location captured";
+            if (btnEl) btnEl.disabled = false;
+        },
+        (err) => {
+            console.warn("Geolocation error:", err);
+            statusEl.textContent = "Permission denied — you can still continue without it.";
+            if (btnEl) btnEl.disabled = false;
+        },
+        { enableHighAccuracy: false, timeout: 8000 }
+    );
+}
+window.captureLocation = captureLocation;
+
 async function handleHealthSubmit(event) {
     event.preventDefault();
     const getVal = (id) => document.getElementById(id)?.value || "";
@@ -508,6 +520,8 @@ async function handleHealthSubmit(event) {
         budgetPref: payload.budgetPref,
         lifeStage: payload.lifeStage,
         recommended_thali: thali ? thali.thali_plan : null,
+        latitude: getVal("userLat") || null,
+        longitude: getVal("userLng") || null,
         submissionDate: new Date(),
     };
     const { error } = await sb.from('consumers').update({ health_profile: healthData }).eq('id', user.id);
@@ -545,16 +559,10 @@ window.onload = async function() {
     if (document.getElementById("homeLangSelect")) document.getElementById("homeLangSelect").value = savedLang;
     applyTranslations();
 
-    if (sb) {
-        try {
-            const { data: { user } } = await sb.auth.getUser();
-            if (user && document.getElementById("welcomeUser")) {
-                const { data } = await sb.from('farmers').select('*').eq('id', user.id).single();
-                if (data) document.getElementById("welcomeUser").innerText = "Welcome, " + data.name;
-            }
-        } catch (err) {
-            console.error("Could not load user greeting:", err);
-        }
+    const { data: { user } } = await sb.auth.getUser();
+    if (user && document.getElementById("welcomeUser")) {
+        const { data } = await sb.from('farmers').select('*').eq('id', user.id).single();
+        if (data) document.getElementById("welcomeUser").innerText = "Welcome, " + data.name;
     }
     const greetingEl = document.getElementById("greetingText");
     if (greetingEl) {
