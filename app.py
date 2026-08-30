@@ -19,6 +19,9 @@ import pandas as pd
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+from voice_parser import parse_transcript
+from soil_photo import analyze_soil_photo
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = BASE_DIR
 MODEL_PATH = os.path.join(BASE_DIR, "crop_model.pkl")
@@ -75,6 +78,29 @@ def compute_soil_health_score(ph: float) -> int:
     if 6.0 <= ph <= 7.0:
         return 85
     return 65
+
+
+@app.route("/parse_voice", methods=["POST"])
+def parse_voice():
+    data = request.get_json(force=True, silent=True) or {}
+    transcript = data.get("transcript", "")
+    if not transcript.strip():
+        return jsonify({"error": "Empty transcript"}), 400
+    result = parse_transcript(transcript)
+    return jsonify(result)
+
+
+@app.route("/analyze_soil_photo", methods=["POST"])
+def analyze_soil_photo_route():
+    data = request.get_json(force=True, silent=True) or {}
+    image_b64 = data.get("image", "")
+    if not image_b64:
+        return jsonify({"error": "No image provided"}), 400
+    try:
+        result = analyze_soil_photo(image_b64)
+    except Exception as e:
+        return jsonify({"error": f"Could not process image: {e}"}), 400
+    return jsonify(result)
 
 
 @app.route("/predict_crop", methods=["POST"])
