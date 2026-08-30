@@ -49,7 +49,8 @@
     }
     body:has(button:hover) .cursor-ring,
     body:has(select:hover) .cursor-ring,
-    body:has(.day-card:hover) .cursor-ring,
+    body:has(.week-tab:hover) .cursor-ring,
+    body:has(.panel-meal-row:hover) .cursor-ring,
     body:has(.alt-tag:hover) .cursor-ring { width: 60px; height: 60px; border-color: var(--g5); }
 
     /* CANVAS + GRAIN */
@@ -330,60 +331,88 @@
     /* TWO-COL GRID */
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
 
-    /* WEEK PLAN */
-    .week-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
+    /* WEEK PLAN — day tabs + one spacious panel below, instead of 7
+       cramped columns (which forced ugly mid-word text wrapping). */
+    .week-tabs {
+      display: flex;
       gap: 6px;
-      margin-top: 0.25rem;
+      margin-top: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
     }
-    .day-card {
+    .week-tab {
+      flex: 1;
+      min-width: 44px;
       background: rgba(8,12,8,0.5);
-      border: 1px solid rgba(70,196,85,0.12);
-      border-radius: 12px;
-      padding: 10px 8px;
-      text-align: left;
-      transition: all .3s ease;
-      cursor: none;
-    }
-    .day-card:hover {
-      border-color: var(--g5);
-      background: rgba(70,196,85,0.07);
-      transform: translateY(-3px);
-      box-shadow: 0 8px 24px rgba(70,196,85,0.15);
-    }
-    .day-card.active {
-      border-color: var(--g5);
-      background: rgba(70,196,85,0.1);
-      box-shadow: 0 0 0 1px rgba(70,196,85,0.2);
-    }
-    .day-label {
-      font-size: 0.55rem; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--gold);
-      font-weight: 700; margin-bottom: 6px; text-align: center;
-    }
-    .day-meal-row {
-      font-size: 0.62rem; color: rgba(245,240,232,0.7);
-      line-height: 1.5; font-weight: 400;
-      white-space: normal; word-break: break-word;
-      display: flex; align-items: flex-start; gap: 4px;
-      margin-bottom: 3px;
+      border: 1px solid rgba(70,196,85,0.15);
+      border-radius: 10px;
+      padding: 10px 4px;
+      text-align: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(245,240,232,0.6);
       cursor: pointer;
-      border-radius: 6px;
-      padding: 2px 3px;
-      transition: background 0.2s, color 0.2s;
+      transition: all .2s ease;
     }
-    .day-meal-row:hover {
-      background: rgba(70,196,85,0.12);
+    .week-tab:hover {
+      border-color: var(--g5);
       color: var(--cream);
     }
-    .meal-map-icon {
-      font-size: 0.55rem; opacity: 0; color: var(--g5);
-      margin-left: auto; flex-shrink: 0; align-self: center;
+    .week-tab.active {
+      background: rgba(70,196,85,0.15);
+      border-color: var(--g5);
+      color: var(--g5);
+      box-shadow: 0 0 0 1px rgba(70,196,85,0.25);
+    }
+    .week-tab.today::after {
+      content: '•';
+      display: block;
+      color: var(--gold);
+      font-size: 0.9rem;
+      line-height: 0.6;
+      margin-top: 2px;
+    }
+    .week-day-panel {
+      margin-top: 1rem;
+      background: rgba(8,12,8,0.5);
+      border: 1px solid rgba(70,196,85,0.12);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+    }
+    .panel-meal-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 4px;
+    }
+    .panel-meal-row:last-child { margin-bottom: 0; }
+    .panel-meal-row:hover {
+      background: rgba(70,196,85,0.1);
+    }
+    .panel-meal-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .panel-meal-text { flex: 1; min-width: 0; }
+    .panel-meal-label {
+      font-size: 0.62rem; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--gold);
+      font-weight: 700; margin-bottom: 2px;
+    }
+    .panel-meal-name {
+      font-size: 0.88rem; color: rgba(245,240,232,0.85);
+      line-height: 1.4; word-wrap: break-word;
+    }
+    .panel-meal-map {
+      font-size: 0.7rem; opacity: 0; color: var(--g5);
+      flex-shrink: 0; margin-top: 4px;
       transition: opacity 0.2s;
     }
-    .day-meal-row:hover .meal-map-icon { opacity: 1; }
-    .meal-icon { font-size: 0.7rem; flex-shrink: 0; }
+    .panel-meal-row:hover .panel-meal-map { opacity: 1; }
+
 
     /* ALTERNATIVES */
     .alt-grid {
@@ -511,7 +540,6 @@
       .welcome-header { grid-template-columns: 1fr; }
       .header-stats { justify-content: flex-start; }
       .two-col { grid-template-columns: 1fr; }
-      .week-grid { grid-template-columns: repeat(3, 1fr); }
       .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
     }
     @media (max-width: 640px) {
@@ -520,11 +548,10 @@
       .hero-row { grid-template-columns: 1fr; justify-items: center; text-align: center; }
       .condition-badge { margin: 0 auto 0.9rem; }
       .nutrients-row { justify-content: center; }
-      .week-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .tips-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 420px) {
-      .week-grid { grid-template-columns: 1fr; }
+      .week-tab { min-width: 40px; font-size: 0.6rem; padding: 8px 3px; }
+      .week-day-panel { padding: 0.9rem 0.9rem; }
+      .panel-meal-name { font-size: 0.82rem; }
     }
   </style>
 </head>
@@ -655,9 +682,8 @@
         <span id="chipWeek">Weekly Blueprint</span>
       </div>
       <div class="group-title" id="gtWeek">7-Day Meal Rotation</div>
-      <div class="week-grid" id="weekGrid">
-        <!-- Filled by JS -->
-      </div>
+      <div class="week-tabs" id="weekTabs"></div>
+      <div class="week-day-panel" id="weekDayPanel"></div>
     </div>
 
     <!-- Low-Cost Alternatives -->
@@ -974,38 +1000,23 @@ function renderDashboard(condition, userName, mealType, budget, realThali, userL
   document.getElementById('nFiber').textContent = d.fiber;
   document.getElementById('nKcal').textContent = d.kcal;
 
-  // Week grid — full 7-day plan with breakfast, lunch & dinner, respecting
-  // the person's veg/non-veg preference. Each meal is clickable and opens
-  // nearby restaurant results via findNearMe() (same function the thali
-  // "Find near me" chips use).
+  // Week plan — day tabs + one spacious panel below (replaces the old
+  // 7-column grid, which was too narrow and caused ugly mid-word text
+  // wrapping for longer dish names). Each meal in the panel is clickable
+  // and opens nearby restaurant results via findNearMe().
+  window._weekState = { data: d.week, pref, userLat, userLng };
   const today = new Date().getDay(); // 0=Sun
-  const weekGrid = document.getElementById('weekGrid');
-  weekGrid.innerHTML = '';
+  const weekTabs = document.getElementById('weekTabs');
+  weekTabs.innerHTML = '';
+  let initialDay = 0;
   WEEK_LABELS.forEach((label, i) => {
     const dayIndex = (i + 1) % 7; // Map Mon=0...Sun=6 to JS day
     const isToday = dayIndex === today;
-    const b = d.week.breakfast[pref][i];
-    const l = d.week.lunch[pref][i];
-    const dn = d.week.dinner[pref][i];
-    const safeB = b.replace(/'/g, "\\'");
-    const safeL = l.replace(/'/g, "\\'");
-    const safeD = dn.replace(/'/g, "\\'");
-    const latArg = userLat ? `'${userLat}'` : null;
-    const lngArg = userLng ? `'${userLng}'` : null;
-    weekGrid.innerHTML += `
-      <div class="day-card ${isToday ? 'active' : ''}">
-        <div class="day-label">${label}</div>
-        <div class="day-meal-row" onclick="findNearMe('${safeB}', ${latArg}, ${lngArg})" title="Find ${b} near me">
-          <span class="meal-icon">${MEAL_ICONS.breakfast}</span>${b} <i class="fas fa-location-dot meal-map-icon"></i>
-        </div>
-        <div class="day-meal-row" onclick="findNearMe('${safeL}', ${latArg}, ${lngArg})" title="Find ${l} near me">
-          <span class="meal-icon">${MEAL_ICONS.lunch}</span>${l} <i class="fas fa-location-dot meal-map-icon"></i>
-        </div>
-        <div class="day-meal-row" onclick="findNearMe('${safeD}', ${latArg}, ${lngArg})" title="Find ${dn} near me">
-          <span class="meal-icon">${MEAL_ICONS.dinner}</span>${dn} <i class="fas fa-location-dot meal-map-icon"></i>
-        </div>
-      </div>`;
+    if (isToday) initialDay = i;
+    weekTabs.innerHTML += `
+      <div class="week-tab ${isToday ? 'today' : ''}" data-day-index="${i}" onclick="selectWeekDay(${i})">${label}</div>`;
   });
+  selectWeekDay(initialDay);
 
   // Alternatives
   const altGrid = document.getElementById('alternatives');
@@ -1092,6 +1103,43 @@ function renderThaliChips(realThali, userLat, userLng) {
     container.appendChild(chip);
   });
 }
+
+function selectWeekDay(i) {
+  const state = window._weekState;
+  if (!state) return;
+  const { data, pref, userLat, userLng } = state;
+
+  // Update active tab styling
+  document.querySelectorAll('.week-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.dayIndex == i);
+  });
+
+  const b = data.breakfast[pref][i];
+  const l = data.lunch[pref][i];
+  const dn = data.dinner[pref][i];
+  const meals = [
+    { icon: MEAL_ICONS.breakfast, label: 'Breakfast', name: b },
+    { icon: MEAL_ICONS.lunch, label: 'Lunch', name: l },
+    { icon: MEAL_ICONS.dinner, label: 'Dinner', name: dn },
+  ];
+  const latArg = userLat ? `'${userLat}'` : null;
+  const lngArg = userLng ? `'${userLng}'` : null;
+
+  const panel = document.getElementById('weekDayPanel');
+  panel.innerHTML = meals.map(m => {
+    const safeName = m.name.replace(/'/g, "\\'");
+    return `
+      <div class="panel-meal-row" onclick="findNearMe('${safeName}', ${latArg}, ${lngArg})" title="Find ${m.name} near me">
+        <span class="panel-meal-icon">${m.icon}</span>
+        <div class="panel-meal-text">
+          <div class="panel-meal-label">${m.label}</div>
+          <div class="panel-meal-name">${m.name}</div>
+        </div>
+        <i class="fas fa-location-dot panel-meal-map"></i>
+      </div>`;
+  }).join('');
+}
+window.selectWeekDay = selectWeekDay;
 
 /* ─── SUPABASE INIT ─── */
 window.onload = async function() {
