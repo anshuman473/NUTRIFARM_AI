@@ -724,7 +724,11 @@ option { background: #0f2010; color: var(--cream); }
             <button type="button" class="v-btn" onclick="toggleVoice()" id="micToggleBtn">
               <i class="fas fa-microphone"></i> Start Recording
             </button>
+            <button type="button" class="v-btn" onclick="autofillFromVoice()" id="autofillVoiceBtn" style="background:rgba(70,196,85,0.15); border-color:rgba(70,196,85,0.4);">
+              <i class="fas fa-magic"></i> Autofill Form
+            </button>
           </div>
+          <div id="voiceAutofillStatus" style="font-size:0.8rem; color:rgba(70,196,85,0.7); margin-top:6px; min-height:18px;"></div>
         </div>
 
         <!-- ── PHOTO PANEL (hidden by default, shown when camera clicked) ── -->
@@ -753,6 +757,7 @@ option { background: #0f2010; color: var(--cream); }
           </div>
           <!-- Preview grid: uploaded images show here -->
           <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+          <div id="photoAnalysisStatus" style="font-size:0.8rem; color:rgba(70,196,85,0.7); margin-top:6px; min-height:18px;"></div>
         </div>
 
         <!-- ── SECTION 01: Environmental Data ── -->
@@ -1111,8 +1116,96 @@ function copyTranscript() {
 }
 
 /* ─────────────────────────────────────────────
-   PHOTO UPLOAD & PREVIEW
+   VOICE → FORM AUTOFILL
+   Calls /parse_voice, then fills the SAME form
+   fields the manual form already uses — nothing
+   downstream (predict_crop, dashboard) changes.
 ───────────────────────────────────────────── */
+function setFieldValue(id, value) {
+  const el = document.getElementById(id);
+  if (!el || value === undefined || value === null) return false;
+  el.value = value;
+  el.classList.add('auto-filled');
+  el.style.transition = 'background-color 0.3s';
+  el.style.backgroundColor = 'rgba(70,196,85,0.18)';
+  setTimeout(() => { el.style.backgroundColor = ''; }, 2500);
+  return true;
+}
+
+async function autofillFromVoice() {
+  const transcript = document.getElementById('voiceTranscript').value.trim();
+  const statusEl = document.getElementById('voiceAutofillStatus');
+  if (!transcript) {
+    statusEl.textContent = '⚠ Record or type something first.';
+    statusEl.style.color = '#e67e22';
+    return;
+  }
+
+  statusEl.textContent = '⏳ Reading your description…';
+  statusEl.style.color = 'rgba(70,196,85,0.7)';
+
+  try {
+    const res = await fetch(`${API_BASE}/parse_voice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not parse transcript');
+
+    const filled = [];
+    if (setFieldValue('landArea', data.landArea)) filled.push('Land area');
+    if (setFieldValue('soilType', data.soilType)) filled.push('Soil type');
+    if (setFieldValue('soilPH', data.soilPH)) filled.push('Soil pH');
+    if (setFieldValue('waterSource', data.waterSource)) filled.push('Water source');
+    if (setFieldValue('irrigationAvail', data.irrigationAvail)) filled.push('Irrigation');
+    if (setFieldValue('season', data.season)) filled.push('Season');
+    if (setFieldValue('investment', data.investment)) filled.push('Investment');
+    if (setFieldValue('fertilizer', data.fertilizer)) filled.push('Fertilizer');
+    if (setFieldValue('prevCrop', data.prevCrop)) filled.push('Previous crop');
+    if (setFieldValue('currCrop', data.currCrop)) filled.push('Current crop');
+
+    statusEl.textContent = filled.length
+      ? `✅ Auto-filled: ${filled.join(', ')}. Please review before submitting.`
+      : `⚠ Couldn't confidently detect any fields — please fill the form manually.`;
+    statusEl.style.color = filled.length ? 'rgba(70,196,85,0.9)' : '#e67e22';
+  } catch (err) {
+    console.error('Voice autofill error:', err);
+    statusEl.textContent = '⚠ Autofill engine offline — please fill the form manually.';
+    statusEl.style.color = '#e67e22';
+  }
+}
+window.autofillFromVoice = autofillFromVoice;
+
+/* ─────────────────────────────────────────────
+   PHOTO → SOIL TYPE AUTOFILL
+   Runs automatically after each photo upload.
+───────────────────────────────────────────── */
+async function analyzePhotoForSoilType(dataUrl) {
+  const statusEl = document.getElementById('photoAnalysisStatus');
+  statusEl.textContent = '⏳ Analyzing soil color…';
+  statusEl.style.color = 'rgba(70,196,85,0.7)';
+
+  try {
+    const res = await fetch(`${API_BASE}/analyze_soil_photo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not analyze photo');
+
+    setFieldValue('soilType', data.soil_type_guess);
+    statusEl.textContent =
+      `📷 Detected soil type: ${data.soil_type_guess} (${data.confidence} confidence, color-based estimate — please verify).`;
+    statusEl.style.color = 'rgba(70,196,85,0.9)';
+  } catch (err) {
+    console.error('Photo analysis error:', err);
+    statusEl.textContent = '⚠ Photo analysis offline — please select soil type manually.';
+    statusEl.style.color = '#e67e22';
+  }
+}
+
 let uploadedPhotos = []; // store { file, url, name }
 
 function handlePhotoUpload(files) {
@@ -1130,6 +1223,7 @@ function handlePhotoUpload(files) {
     reader.onload = (e) => {
       const url = e.target.result;
       const id  = Date.now() + Math.random();
+      const isFirstPhoto = uploadedPhotos.length === 0;
       uploadedPhotos.push({ id, url, name: file.name });
 
       // Build preview card
@@ -1145,6 +1239,10 @@ function handlePhotoUpload(files) {
       `;
       grid.appendChild(item);
       updatePhotoCount();
+
+      // Only auto-analyze the first photo added — avoids firing multiple
+      // competing requests when several photos are dropped at once.
+      if (isFirstPhoto) analyzePhotoForSoilType(url);
     };
     reader.readAsDataURL(file);
   });
