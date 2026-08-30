@@ -342,7 +342,7 @@
       border: 1px solid rgba(70,196,85,0.12);
       border-radius: 12px;
       padding: 10px 8px;
-      text-align: center;
+      text-align: left;
       transition: all .3s ease;
       cursor: none;
     }
@@ -360,13 +360,16 @@
     .day-label {
       font-size: 0.55rem; text-transform: uppercase;
       letter-spacing: 0.1em; color: var(--gold);
-      font-weight: 700; margin-bottom: 6px;
+      font-weight: 700; margin-bottom: 6px; text-align: center;
     }
-    .day-meal {
-      font-size: 0.7rem; color: rgba(245,240,232,0.65);
-      line-height: 1.35; font-weight: 400;
+    .day-meal-row {
+      font-size: 0.62rem; color: rgba(245,240,232,0.7);
+      line-height: 1.5; font-weight: 400;
+      white-space: normal; word-break: break-word;
+      display: flex; align-items: flex-start; gap: 4px;
+      margin-bottom: 3px;
     }
-    .day-icon { font-size: 1.1rem; margin-bottom: 5px; display: block; }
+    .meal-icon { font-size: 0.7rem; flex-shrink: 0; }
 
     /* ALTERNATIVES */
     .alt-grid {
@@ -494,7 +497,7 @@
       .welcome-header { grid-template-columns: 1fr; }
       .header-stats { justify-content: flex-start; }
       .two-col { grid-template-columns: 1fr; }
-      .week-grid { grid-template-columns: repeat(4, 1fr); }
+      .week-grid { grid-template-columns: repeat(3, 1fr); }
       .footer { padding: 1.2rem 1.5rem; flex-wrap: wrap; gap: .5rem; }
     }
     @media (max-width: 640px) {
@@ -503,8 +506,11 @@
       .hero-row { grid-template-columns: 1fr; justify-items: center; text-align: center; }
       .condition-badge { margin: 0 auto 0.9rem; }
       .nutrients-row { justify-content: center; }
-      .week-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .week-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .tips-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 420px) {
+      .week-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -749,20 +755,28 @@ function animateScore(scoreStr) {
 }
 
 /* ─── NUTRITION DATA PER CONDITION ─── */
+const WEEK_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MEAL_ICONS = { breakfast: '🌅', lunch: '☀️', dinner: '🌙' };
+
 const conditionData = {
   none: {
     score: '88%', tag: 'General Balance', thaliName: '🌿 Balanced Wholesome Thali',
     thaliDesc: 'A well-rounded thali with rice, dal, sabzi, roti, curd, and seasonal salad — covering all macro & micronutrients for your daily needs.',
     carbs: '65g', protein: '22g', fats: '18g', fiber: '12g', kcal: '520',
-    days: [
-      { icon: '🌅', label: 'Mon', meal: 'Poha\n+ Banana' },
-      { icon: '🍛', label: 'Tue', meal: 'Dal Rice\n+ Sabzi' },
-      { icon: '🫓', label: 'Wed', meal: 'Roti\n+ Paneer' },
-      { icon: '🍲', label: 'Thu', meal: 'Khichdi\n+ Raita' },
-      { icon: '🥗', label: 'Fri', meal: 'Upma\n+ Fruits' },
-      { icon: '🍱', label: 'Sat', meal: 'Thali\n+ Curd' },
-      { icon: '🌾', label: 'Sun', meal: 'Pongal\n+ Sambhar' }
-    ],
+    week: {
+      breakfast: {
+        veg:    ['Poha + Banana', 'Idli + Sambhar', 'Upma + Fruit', 'Paratha + Curd', 'Dalia + Nuts', 'Dosa + Chutney', 'Sprouts + Toast'],
+        nonveg: ['Egg Bhurji + Toast', 'Idli + Sambhar', 'Omelette + Fruit', 'Paratha + Curd', 'Boiled Eggs + Dalia', 'Egg Dosa + Chutney', 'Egg Sandwich']
+      },
+      lunch: {
+        veg:    ['Dal Rice + Sabzi', 'Rajma + Rice', 'Sambhar Rice', 'Chole + Roti', 'Kadhi + Rice', 'Palak Paneer + Roti', 'Veg Thali'],
+        nonveg: ['Chicken Curry + Rice', 'Fish Curry + Rice', 'Egg Curry + Roti', 'Chicken Biryani', 'Prawn Curry + Rice', 'Chicken + Roti', 'Non-Veg Thali']
+      },
+      dinner: {
+        veg:    ['Roti + Paneer Sabzi', 'Khichdi + Raita', 'Veg Pulao + Raita', 'Dal + Roti', 'Veg Soup + Bread', 'Paneer Tikka + Roti', 'Light Veg Thali'],
+        nonveg: ['Grilled Chicken + Salad', 'Fish Fry + Roti', 'Egg Curry + Rice', 'Chicken Soup + Bread', 'Prawn Stir-fry + Rice', 'Chicken Tikka + Roti', 'Light Chicken Thali']
+      }
+    },
     alts: [
       { icon: 'fa-seedling', label: 'Brown Rice', price: '₹40/kg' },
       { icon: 'fa-leaf', label: 'Spinach Dal', price: '₹15/bunch' },
@@ -782,15 +796,20 @@ const conditionData = {
     score: '91%', tag: 'Diabetes-Optimized', thaliName: '🩺 Low-GI Diabetic Thali',
     thaliDesc: 'Low glycemic index foods — bajra roti, bitter gourd sabzi, moong dal, raw salad and curd — designed to regulate blood sugar and insulin response.',
     carbs: '45g', protein: '28g', fats: '16g', fiber: '18g', kcal: '440',
-    days: [
-      { icon: '🌅', label: 'Mon', meal: 'Oats\n+ Nuts' },
-      { icon: '🫘', label: 'Tue', meal: 'Moong Dal\n+ Salad' },
-      { icon: '🫓', label: 'Wed', meal: 'Bajra Roti\n+ Karela' },
-      { icon: '🥦', label: 'Thu', meal: 'Veggie\nKhichdi' },
-      { icon: '🌾', label: 'Fri', meal: 'Ragi\n+ Curd' },
-      { icon: '🥗', label: 'Sat', meal: 'Sprouts\n+ Soup' },
-      { icon: '🍲', label: 'Sun', meal: 'Mixed\nDal Rice' }
-    ],
+    week: {
+      breakfast: {
+        veg:    ['Oats + Nuts', 'Moong Chilla', 'Ragi Porridge', 'Sprouts Salad', 'Vegetable Daliya', 'Besan Chilla', 'Methi Paratha (no oil)'],
+        nonveg: ['Egg Whites + Oats', 'Boiled Egg + Salad', 'Egg Chilla', 'Sprouts + Egg Bhurji', 'Grilled Egg Sandwich', 'Besan-Egg Chilla', 'Omelette + Veggies']
+      },
+      lunch: {
+        veg:    ['Moong Dal + Salad', 'Bajra Roti + Karela', 'Veggie Khichdi', 'Ragi + Curd', 'Sprouts + Soup', 'Mixed Dal + Salad', 'Millet Pulao'],
+        nonveg: ['Grilled Fish + Salad', 'Skinless Chicken Curry', 'Egg Curry + Bajra Roti', 'Fish + Veg Soup', 'Chicken + Millet', 'Grilled Chicken Salad', 'Egg + Sprouts Bowl']
+      },
+      dinner: {
+        veg:    ['Karela Sabzi + Roti', 'Lauki Soup', 'Palak Dal + Roti', 'Veg Stir-fry', 'Methi Sabzi + Roti', 'Cabbage Soup', 'Light Dal Khichdi'],
+        nonveg: ['Grilled Fish + Veggies', 'Chicken Soup', 'Egg Curry + Salad', 'Fish + Steamed Veg', 'Boiled Egg + Soup', 'Grilled Chicken + Salad', 'Light Fish Curry']
+      }
+    },
     alts: [
       { icon: 'fa-seedling', label: 'Ragi / Bajra', price: '₹55/kg' },
       { icon: 'fa-leaf', label: 'Bitter Gourd', price: '₹30/kg' },
@@ -810,15 +829,20 @@ const conditionData = {
     score: '89%', tag: 'BP Control Diet', thaliName: '❤️ Heart-Healthy DASH Thali',
     thaliDesc: 'DASH-aligned thali featuring low-sodium sabzi, potassium-rich banana, whole grains, and flaxseed — proven to lower blood pressure naturally.',
     carbs: '58g', protein: '24g', fats: '14g', fiber: '16g', kcal: '480',
-    days: [
-      { icon: '🌅', label: 'Mon', meal: 'Oats\n+ Banana' },
-      { icon: '🥬', label: 'Tue', meal: 'Palak Dal\n+ Rice' },
-      { icon: '🫓', label: 'Wed', meal: 'Multigrain\nRoti' },
-      { icon: '🍲', label: 'Thu', meal: 'Lentil\nSoup' },
-      { icon: '🥗', label: 'Fri', meal: 'Sprouts\nSalad' },
-      { icon: '🌾', label: 'Sat', meal: 'Quinoa\n+ Sabzi' },
-      { icon: '🍱', label: 'Sun', meal: 'Light\nThali' }
-    ],
+    week: {
+      breakfast: {
+        veg:    ['Oats + Banana', 'Idli (low salt) + Chutney', 'Fruit Bowl + Nuts', 'Vegetable Daliya', 'Multigrain Toast', 'Sprout Salad', 'Poha (low salt)'],
+        nonveg: ['Egg Whites + Oats', 'Boiled Egg (no salt) + Fruit', 'Omelette (low salt)', 'Egg + Veg Daliya', 'Multigrain Toast + Egg', 'Egg Sprout Salad', 'Poha + Boiled Egg']
+      },
+      lunch: {
+        veg:    ['Palak Dal + Rice', 'Multigrain Roti + Sabzi', 'Lentil Soup', 'Sprouts Salad', 'Quinoa + Sabzi', 'Low-Salt Veg Thali', 'Vegetable Pulao'],
+        nonveg: ['Grilled Fish (low salt)', 'Steamed Chicken + Rice', 'Egg Curry (low salt)', 'Fish + Quinoa', 'Grilled Chicken Salad', 'Boiled Egg + Veg', 'Chicken Soup + Roti']
+      },
+      dinner: {
+        veg:    ['Light Veg Soup', 'Steamed Veggies + Roti', 'Cucumber Salad + Dal', 'Vegetable Stew', 'Sabzi + Multigrain Roti', 'Light Khichdi', 'Fruit + Nuts Bowl'],
+        nonveg: ['Grilled Fish + Veg', 'Steamed Chicken + Salad', 'Egg White Curry', 'Fish Soup', 'Boiled Egg + Veg Stew', 'Light Chicken Stew', 'Grilled Fish Salad']
+      }
+    },
     alts: [
       { icon: 'fa-seedling', label: 'Flaxseeds', price: '₹80/kg' },
       { icon: 'fa-leaf', label: 'Spinach', price: '₹15/bunch' },
@@ -838,15 +862,20 @@ const conditionData = {
     score: '94%', tag: 'Iron-Enriched Diet', thaliName: '🩸 Iron-Rich Anemia Thali',
     thaliDesc: 'Iron-dense thali with rajma, methi sabzi, jaggery, drumstick leaves, and citrus — maximizing iron absorption with Vitamin C pairing.',
     carbs: '62g', protein: '26g', fats: '15g', fiber: '20g', kcal: '510',
-    days: [
-      { icon: '🌅', label: 'Mon', meal: 'Ragi\nPorridge' },
-      { icon: '🫘', label: 'Tue', meal: 'Rajma\n+ Rice' },
-      { icon: '🥬', label: 'Wed', meal: 'Methi\nDal Roti' },
-      { icon: '🍲', label: 'Thu', meal: 'Drumstick\nSambhar' },
-      { icon: '🌾', label: 'Fri', meal: 'Chana\n+ Salad' },
-      { icon: '🥗', label: 'Sat', meal: 'Palak\nPaneer' },
-      { icon: '🍱', label: 'Sun', meal: 'Iron\nThali' }
-    ],
+    week: {
+      breakfast: {
+        veg:    ['Ragi Porridge', 'Jaggery + Nuts + Toast', 'Beetroot Paratha', 'Sprouts Chaat', 'Palak Paratha + Curd', 'Dates + Nut Mix', 'Methi Paratha'],
+        nonveg: ['Egg + Toast', 'Liver Fry (small) + Toast', 'Egg Bhurji + Paratha', 'Egg + Beetroot Salad', 'Omelette + Spinach', 'Egg + Dates Mix', 'Egg Paratha']
+      },
+      lunch: {
+        veg:    ['Rajma + Rice', 'Methi Dal Roti', 'Chana + Salad', 'Palak Paneer + Roti', 'Beetroot Sabzi + Roti', 'Rajma Chawal', 'Sprouts + Dal Bowl'],
+        nonveg: ['Mutton Curry (moderate) + Rice', 'Liver Curry + Roti', 'Chicken + Spinach Curry', 'Egg Curry + Rice', 'Lean Red Meat Stew', 'Chicken Liver + Rice', 'Fish + Spinach Curry']
+      },
+      dinner: {
+        veg:    ['Drumstick Sambhar', 'Palak Dal + Roti', 'Beetroot Soup', 'Methi Sabzi + Roti', 'Chana Soup', 'Spinach Khichdi', 'Iron-Rich Veg Thali'],
+        nonveg: ['Grilled Liver + Veg', 'Chicken + Spinach Stew', 'Egg Curry + Roti', 'Lean Red Meat Soup', 'Fish + Beetroot Curry', 'Chicken Stew + Greens', 'Light Non-Veg Thali']
+      }
+    },
     alts: [
       { icon: 'fa-seedling', label: 'Ragi Flour', price: '₹55/kg' },
       { icon: 'fa-leaf', label: 'Drumstick Leaves', price: '₹20/bunch' },
@@ -866,15 +895,20 @@ const conditionData = {
     score: '87%', tag: 'Thyroid Support Diet', thaliName: '🦋 Thyroid-Balanced Thali',
     thaliDesc: 'Selenium & iodine balanced thali with Brazil nut analogs, sea vegetables, eggs, and anti-goitrogenic cooked crucifers for optimal thyroid function.',
     carbs: '55g', protein: '25g', fats: '20g', fiber: '14g', kcal: '500',
-    days: [
-      { icon: '🌅', label: 'Mon', meal: 'Eggs\n+ Toast' },
-      { icon: '🐟', label: 'Tue', meal: 'Fish Curry\n+ Rice' },
-      { icon: '🫓', label: 'Wed', meal: 'Whole Wheat\nRoti' },
-      { icon: '🥬', label: 'Thu', meal: 'Cooked\nCabbage Dal' },
-      { icon: '🌾', label: 'Fri', meal: 'Quinoa\n+ Salad' },
-      { icon: '🥗', label: 'Sat', meal: 'Mixed\nVeg Soup' },
-      { icon: '🍱', label: 'Sun', meal: 'Iodine\nThali' }
-    ],
+    week: {
+      breakfast: {
+        veg:    ['Brazil Nuts + Fruit Bowl', 'Dairy Smoothie + Seeds', 'Sea Vegetable Soup (veg)', 'Yogurt + Nuts', 'Iodized-Salt Poha', 'Milk + Sunflower Seeds', 'Paneer Toast'],
+        nonveg: ['Boiled Egg + Toast', 'Egg + Fruit Bowl', 'Egg White Omelette', 'Fish (small) + Toast', 'Egg + Seeds Bowl', 'Omelette + Milk', 'Egg Sandwich']
+      },
+      lunch: {
+        veg:    ['Cooked Cabbage Dal', 'Paneer + Multigrain Roti', 'Quinoa + Salad (iodized salt)', 'Sea Vegetable Curry (veg)', 'Dairy-Rich Veg Thali', 'Nuts + Veg Curry', 'Selenium-Rich Veg Bowl'],
+        nonveg: ['Fish Curry + Rice', 'Grilled Fish + Salad', 'Egg Curry + Roti', 'Seafood Soup', 'Fish + Quinoa', 'Prawn Curry + Rice', 'Fish Thali']
+      },
+      dinner: {
+        veg:    ['Mixed Veg Soup', 'Steamed Veggies + Paneer', 'Cooked Crucifers + Roti', 'Light Dairy Soup', 'Nuts + Salad Bowl', 'Veg Iodine Thali', 'Paneer Tikka + Roti'],
+        nonveg: ['Fish Fry + Roti', 'Grilled Fish + Veg', 'Egg Curry + Rice', 'Light Seafood Stew', 'Prawn Stir-fry', 'Fish Soup + Bread', 'Light Fish Thali']
+      }
+    },
     alts: [
       { icon: 'fa-seedling', label: 'Sunflower Seeds', price: '₹60/kg' },
       { icon: 'fa-fish', label: 'Small Fish', price: '₹80/kg' },
@@ -893,9 +927,10 @@ const conditionData = {
 };
 
 /* ─── RENDER DASHBOARD ─── */
-function renderDashboard(condition, userName, mealType, budget, realThali) {
+function renderDashboard(condition, userName, mealType, budget, realThali, userLat, userLng, foodPreference) {
   const cKey = condition || 'none';
   const d = conditionData[cKey] || conditionData['none'];
+  const pref = (foodPreference === 'non-veg') ? 'nonveg' : 'veg';
 
   // Welcome
   document.getElementById('welcomeUser').textContent = userName || 'Nutritionist';
@@ -910,10 +945,10 @@ function renderDashboard(condition, userName, mealType, budget, realThali) {
   document.getElementById('thaliName').textContent = d.thaliName;
 
   // Prefer the real, personalized plan from /recommend_thali (saved on
-  // submission) over the static per-condition placeholder text.
+  // submission) over the static per-condition placeholder text. Each dish
+  // becomes a clickable chip that opens nearby restaurant results.
   if (realThali) {
-    document.getElementById('thaliDetails').textContent =
-      `${realThali.grain} • ${realThali.dal_or_curry} • ${realThali.vegetable} • ${realThali.protein} • ${realThali.side}`;
+    renderThaliChips(realThali, userLat, userLng);
   } else {
     document.getElementById('thaliDetails').textContent = d.thaliDesc;
   }
@@ -925,19 +960,23 @@ function renderDashboard(condition, userName, mealType, budget, realThali) {
   document.getElementById('nFiber').textContent = d.fiber;
   document.getElementById('nKcal').textContent = d.kcal;
 
-  // Week grid
+  // Week grid — full 7-day plan with breakfast, lunch & dinner, respecting
+  // the person's veg/non-veg preference (this previously ignored it).
   const today = new Date().getDay(); // 0=Sun
   const weekGrid = document.getElementById('weekGrid');
   weekGrid.innerHTML = '';
-  d.days.forEach((day, i) => {
-    // Map Mon=0...Sun=6 to JS day
-    const dayIndex = (i + 1) % 7;
+  WEEK_LABELS.forEach((label, i) => {
+    const dayIndex = (i + 1) % 7; // Map Mon=0...Sun=6 to JS day
     const isToday = dayIndex === today;
+    const b = d.week.breakfast[pref][i];
+    const l = d.week.lunch[pref][i];
+    const dn = d.week.dinner[pref][i];
     weekGrid.innerHTML += `
       <div class="day-card ${isToday ? 'active' : ''}">
-        <span class="day-icon">${day.icon}</span>
-        <div class="day-label">${day.label}</div>
-        <div class="day-meal">${day.meal.replace(/\n/g, '<br>')}</div>
+        <div class="day-label">${label}</div>
+        <div class="day-meal-row"><span class="meal-icon">${MEAL_ICONS.breakfast}</span>${b}</div>
+        <div class="day-meal-row"><span class="meal-icon">${MEAL_ICONS.lunch}</span>${l}</div>
+        <div class="day-meal-row"><span class="meal-icon">${MEAL_ICONS.dinner}</span>${dn}</div>
       </div>`;
   });
 
@@ -965,6 +1004,68 @@ function renderDashboard(condition, userName, mealType, budget, realThali) {
   });
 }
 
+/* ─── THALI DISH CHIPS: "find this near me" ───
+   Google Maps search needs no API key and always works for a live demo.
+   Swiggy/Zomato need partner API access we can't get overnight, so those
+   buttons are honestly labeled "Coming Soon" instead of faking a link. */
+function buildMapsUrl(dishName, lat, lng) {
+  const query = encodeURIComponent(`${dishName} restaurant`);
+  if (lat && lng) {
+    return `https://www.google.com/maps/search/${query}/@${lat},${lng},14z`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+function findNearMe(dishName, storedLat, storedLng) {
+  if (storedLat && storedLng) {
+    window.open(buildMapsUrl(dishName, storedLat, storedLng), '_blank');
+    return;
+  }
+  // No saved location on profile — ask live, same as health-profile page does.
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => window.open(buildMapsUrl(dishName, pos.coords.latitude, pos.coords.longitude), '_blank'),
+      () => window.open(buildMapsUrl(dishName, null, null), '_blank'),
+      { enableHighAccuracy: false, timeout: 6000 }
+    );
+  } else {
+    window.open(buildMapsUrl(dishName, null, null), '_blank');
+  }
+}
+window.findNearMe = findNearMe;
+
+function renderThaliChips(realThali, userLat, userLng) {
+  const items = [
+    { label: 'Grain', name: realThali.grain },
+    { label: 'Dal/Curry', name: realThali.dal_or_curry },
+    { label: 'Vegetable', name: realThali.vegetable },
+    { label: 'Protein', name: realThali.protein },
+    { label: 'Side', name: realThali.side },
+  ];
+
+  const container = document.getElementById('thaliDetails');
+  container.innerHTML = '';
+  container.style.display = 'flex';
+  container.style.flexWrap = 'wrap';
+  container.style.gap = '.6rem';
+
+  items.forEach(item => {
+    const safeName = item.name.replace(/'/g, "\\'");
+    const chip = document.createElement('div');
+    chip.style.cssText = 'display:flex;align-items:center;gap:.5rem;background:rgba(70,196,85,0.08);border:1px solid rgba(70,196,85,0.25);border-radius:10px;padding:.5rem .8rem;font-size:.85rem;';
+    chip.innerHTML = `
+      <span><strong>${item.label}:</strong> ${item.name}</span>
+      <button type="button" onclick="findNearMe('${safeName}', ${userLat ? `'${userLat}'` : null}, ${userLng ? `'${userLng}'` : null})"
+        style="background:none;border:none;color:#46c455;cursor:pointer;font-size:.85rem;padding:0;" title="Find near me">
+        <i class="fas fa-location-dot"></i> Find near me
+      </button>
+      <span style="opacity:.4;cursor:not-allowed;font-size:.78rem;" title="Coming soon — needs Swiggy/Zomato partner API access">
+        <i class="fas fa-bag-shopping"></i> Order (Soon)
+      </span>`;
+    container.appendChild(chip);
+  });
+}
+
 /* ─── SUPABASE INIT ─── */
 window.onload = async function() {
   try {
@@ -977,7 +1078,7 @@ window.onload = async function() {
 
       const profile = data?.health_profile || {};
       const displayName = data?.name || user.email?.split('@')[0] || 'Nutritionist';
-      renderDashboard(profile.condition, displayName, profile.mealType, profile.budgetPref, profile.recommended_thali);
+      renderDashboard(profile.condition, displayName, profile.mealType, profile.budgetPref, profile.recommended_thali, profile.latitude, profile.longitude, profile.foodPreference);
     } else {
       window.location.href = 'person-login.html';
       return;
