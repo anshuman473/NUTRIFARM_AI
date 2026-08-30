@@ -368,7 +368,21 @@
       white-space: normal; word-break: break-word;
       display: flex; align-items: flex-start; gap: 4px;
       margin-bottom: 3px;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 2px 3px;
+      transition: background 0.2s, color 0.2s;
     }
+    .day-meal-row:hover {
+      background: rgba(70,196,85,0.12);
+      color: var(--cream);
+    }
+    .meal-map-icon {
+      font-size: 0.55rem; opacity: 0; color: var(--g5);
+      margin-left: auto; flex-shrink: 0; align-self: center;
+      transition: opacity 0.2s;
+    }
+    .day-meal-row:hover .meal-map-icon { opacity: 1; }
     .meal-icon { font-size: 0.7rem; flex-shrink: 0; }
 
     /* ALTERNATIVES */
@@ -961,7 +975,9 @@ function renderDashboard(condition, userName, mealType, budget, realThali, userL
   document.getElementById('nKcal').textContent = d.kcal;
 
   // Week grid — full 7-day plan with breakfast, lunch & dinner, respecting
-  // the person's veg/non-veg preference (this previously ignored it).
+  // the person's veg/non-veg preference. Each meal is clickable and opens
+  // nearby restaurant results via findNearMe() (same function the thali
+  // "Find near me" chips use).
   const today = new Date().getDay(); // 0=Sun
   const weekGrid = document.getElementById('weekGrid');
   weekGrid.innerHTML = '';
@@ -971,12 +987,23 @@ function renderDashboard(condition, userName, mealType, budget, realThali, userL
     const b = d.week.breakfast[pref][i];
     const l = d.week.lunch[pref][i];
     const dn = d.week.dinner[pref][i];
+    const safeB = b.replace(/'/g, "\\'");
+    const safeL = l.replace(/'/g, "\\'");
+    const safeD = dn.replace(/'/g, "\\'");
+    const latArg = userLat ? `'${userLat}'` : null;
+    const lngArg = userLng ? `'${userLng}'` : null;
     weekGrid.innerHTML += `
       <div class="day-card ${isToday ? 'active' : ''}">
         <div class="day-label">${label}</div>
-        <div class="day-meal-row"><span class="meal-icon">${MEAL_ICONS.breakfast}</span>${b}</div>
-        <div class="day-meal-row"><span class="meal-icon">${MEAL_ICONS.lunch}</span>${l}</div>
-        <div class="day-meal-row"><span class="meal-icon">${MEAL_ICONS.dinner}</span>${dn}</div>
+        <div class="day-meal-row" onclick="findNearMe('${safeB}', ${latArg}, ${lngArg})" title="Find ${b} near me">
+          <span class="meal-icon">${MEAL_ICONS.breakfast}</span>${b} <i class="fas fa-location-dot meal-map-icon"></i>
+        </div>
+        <div class="day-meal-row" onclick="findNearMe('${safeL}', ${latArg}, ${lngArg})" title="Find ${l} near me">
+          <span class="meal-icon">${MEAL_ICONS.lunch}</span>${l} <i class="fas fa-location-dot meal-map-icon"></i>
+        </div>
+        <div class="day-meal-row" onclick="findNearMe('${safeD}', ${latArg}, ${lngArg})" title="Find ${dn} near me">
+          <span class="meal-icon">${MEAL_ICONS.dinner}</span>${dn} <i class="fas fa-location-dot meal-map-icon"></i>
+        </div>
       </div>`;
   });
 
