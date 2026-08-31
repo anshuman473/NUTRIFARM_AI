@@ -1132,55 +1132,276 @@ function setFieldValue(id, value) {
   return true;
 }
 
-async function autofillFromVoice() {
-  const transcript = document.getElementById('voiceTranscript').value.trim();
-  const statusEl = document.getElementById('voiceAutofillStatus');
-  if (!transcript) {
-    statusEl.textContent = '⚠ Record or type something first.';
-    statusEl.style.color = '#e67e22';
-    return;
-  }
+async function autofillFromVoice(transcript) {
+    const statusEl = document.getElementById("voiceStatus");
 
-  statusEl.textContent = '⏳ Reading your description…';
-  statusEl.style.color = 'rgba(70,196,85,0.7)';
+    if (!transcript || !transcript.trim()) {
+        if (statusEl) {
+            statusEl.textContent = "⚠ No voice transcript detected.";
+            statusEl.style.color = "#e67e22";
+        }
+        return;
+    }
 
-  try {
-    const res = await fetch(`${API_BASE}/parse_voice`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transcript }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Could not parse transcript');
+    if (statusEl) {
+        statusEl.textContent = "🔄 Processing voice input...";
+        statusEl.style.color = "#ffffff";
+    }
 
-    const filled = [];
-    if (setFieldValue('landArea', data.landArea)) filled.push('Land area');
-    if (setFieldValue('soilType', data.soilType)) filled.push('Soil type');
-    if (setFieldValue('soilPH', data.soilPH)) filled.push('Soil pH');
-    if (setFieldValue('waterSource', data.waterSource)) filled.push('Water source');
-    if (setFieldValue('irrigationAvail', data.irrigationAvail)) filled.push('Irrigation');
-    if (setFieldValue('season', data.season)) filled.push('Season');
-    if (setFieldValue('investment', data.investment)) filled.push('Investment');
-    if (setFieldValue('fertilizer', data.fertilizer)) filled.push('Fertilizer');
-    if (setFieldValue('prevCrop', data.prevCrop)) filled.push('Previous crop');
-    if (setFieldValue('currCrop', data.currCrop)) filled.push('Current crop');
+    try {
+        console.log("Sending transcript to voice parser:", transcript);
 
-    statusEl.textContent = filled.length
-      ? `✅ Auto-filled: ${filled.join(', ')}. Please review before submitting.`
-      : `⚠ Couldn't confidently detect any fields — please fill the form manually.`;
-    statusEl.style.color = filled.length ? 'rgba(70,196,85,0.9)' : '#e67e22';
-  } catch (err) {
-    console.error('Voice autofill error:', err);
-    statusEl.textContent = '⚠ Autofill engine offline — please fill the form manually.';
-    statusEl.style.color = '#e67e22';
-  }
+        const res = await fetch(`${API_BASE}/parse_voice`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                transcript: transcript
+            })
+        });
+
+        // ----------------------------------------------------------
+        // Check HTTP response BEFORE trying to parse JSON
+        // ----------------------------------------------------------
+
+        if (!res.ok) {
+            const errorText = await res.text();
+
+            console.error(
+                "Voice API Error:",
+                res.status,
+                errorText
+            );
+
+            throw new Error(
+                `Voice API returned HTTP ${res.status}`
+            );
+        }
+
+        // ----------------------------------------------------------
+        // Make sure backend actually returned JSON
+        // ----------------------------------------------------------
+
+        const contentType =
+            res.headers.get("content-type") || "";
+
+        if (!contentType.includes("application/json")) {
+            const responseText = await res.text();
+
+            console.error(
+                "Voice API returned non-JSON response:",
+                responseText
+            );
+
+            throw new Error(
+                "Voice API did not return JSON"
+            );
+        }
+
+        // ----------------------------------------------------------
+        // Parse JSON response
+        // ----------------------------------------------------------
+
+        const data = await res.json();
+
+        console.log(
+            "Voice parser response:",
+            data
+        );
+
+        // ----------------------------------------------------------
+        // Fill detected fields
+        // ----------------------------------------------------------
+
+        const filled = [];
+
+        if (
+            data.landArea !== undefined &&
+            data.landArea !== null &&
+            data.landArea !== ""
+        ) {
+            if (setFieldValue("landArea", data.landArea)) {
+                filled.push("Land area");
+            }
+        }
+
+        if (
+            data.soilType !== undefined &&
+            data.soilType !== null &&
+            data.soilType !== ""
+        ) {
+            if (setFieldValue("soilType", data.soilType)) {
+                filled.push("Soil type");
+            }
+        }
+
+        if (
+            data.soilPH !== undefined &&
+            data.soilPH !== null &&
+            data.soilPH !== ""
+        ) {
+            if (setFieldValue("soilPH", data.soilPH)) {
+                filled.push("Soil pH");
+            }
+        }
+
+        if (
+            data.waterSource !== undefined &&
+            data.waterSource !== null &&
+            data.waterSource !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "waterSource",
+                    data.waterSource
+                )
+            ) {
+                filled.push("Water source");
+            }
+        }
+
+        if (
+            data.irrigationAvail !== undefined &&
+            data.irrigationAvail !== null &&
+            data.irrigationAvail !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "irrigationAvail",
+                    data.irrigationAvail
+                )
+            ) {
+                filled.push("Irrigation");
+            }
+        }
+
+        if (
+            data.season !== undefined &&
+            data.season !== null &&
+            data.season !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "season",
+                    data.season
+                )
+            ) {
+                filled.push("Season");
+            }
+        }
+
+        if (
+            data.investment !== undefined &&
+            data.investment !== null &&
+            data.investment !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "investment",
+                    data.investment
+                )
+            ) {
+                filled.push("Investment");
+            }
+        }
+
+        if (
+            data.fertilizer !== undefined &&
+            data.fertilizer !== null &&
+            data.fertilizer !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "fertilizer",
+                    data.fertilizer
+                )
+            ) {
+                filled.push("Fertilizer");
+            }
+        }
+
+        if (
+            data.prevCrop !== undefined &&
+            data.prevCrop !== null &&
+            data.prevCrop !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "prevCrop",
+                    data.prevCrop
+                )
+            ) {
+                filled.push("Previous crop");
+            }
+        }
+
+        if (
+            data.currCrop !== undefined &&
+            data.currCrop !== null &&
+            data.currCrop !== ""
+        ) {
+            if (
+                setFieldValue(
+                    "currCrop",
+                    data.currCrop
+                )
+            ) {
+                filled.push("Current crop");
+            }
+        }
+
+        // ----------------------------------------------------------
+        // Show result
+        // ----------------------------------------------------------
+
+        if (filled.length > 0) {
+
+            if (statusEl) {
+                statusEl.textContent =
+                    `✅ Auto-filled: ${filled.join(", ")}. Please review before submitting.`;
+
+                statusEl.style.color =
+                    "rgba(70,196,85,0.9)";
+            }
+
+            console.log(
+                "Successfully auto-filled:",
+                filled
+            );
+
+        } else {
+
+            if (statusEl) {
+                statusEl.textContent =
+                    "⚠ Couldn't confidently detect any fields. Please fill the form manually.";
+
+                statusEl.style.color =
+                    "#e67e22";
+            }
+
+            console.warn(
+                "Voice parser returned no usable fields:",
+                data
+            );
+        }
+
+    } catch (err) {
+
+        console.error(
+            "Voice autofill error:",
+            err
+        );
+
+        if (statusEl) {
+            statusEl.textContent =
+                "⚠ Autofill engine offline — please fill the form manually.";
+
+            statusEl.style.color =
+                "#e67e22";
+        }
+    }
 }
-window.autofillFromVoice = autofillFromVoice;
-
-/* ─────────────────────────────────────────────
-   PHOTO → SOIL TYPE AUTOFILL
-   Runs automatically after each photo upload.
-───────────────────────────────────────────── */
 async function analyzePhotoForSoilType(dataUrl) {
   const statusEl = document.getElementById('photoAnalysisStatus');
   statusEl.textContent = '⏳ Analyzing soil color…';
