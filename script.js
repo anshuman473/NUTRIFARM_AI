@@ -355,7 +355,7 @@ async function handlePhoneLogin(event) {
    ============================================================ */
 // Same-origin Flask backend (app.py serves this frontend directly).
 // If you deploy the frontend separately, point this at the backend's URL.
-const API_BASE = "";
+const API_BASE = "https://nutrifarm-ai.vercel.app/";
 
 async function handleLandSubmit(event) {
     event.preventDefault();
