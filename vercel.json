@@ -6,8 +6,8 @@
     }
   },
   "rewrites": [
-    { "source": "/predict_crop", "destination": "/api/app" },
-    { "source": "/recommend_thali", "destination": "/api/app" },
-    { "source": "/health", "destination": "/api/app" }
+    { "source": "/predict_crop", "destination": "/app" },
+    { "source": "/recommend_thali", "destination": "/app" },
+    { "source": "/health", "destination": "/app" }
   ]
 }
