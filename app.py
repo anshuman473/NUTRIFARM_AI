@@ -1,29 +1,31 @@
 """
-NutriFarm AI — Flask Backend
+NutriFarm AI — Flask Backend (API-only)
 --------------------------------
-Serves the existing static frontend (index.html, farmer-*, person-*, etc.)
-and exposes two APIs:
+Deployed as a Vercel Python Function. The frontend (index.html, farmer-*,
+person-*, etc.) lives in /public and is served directly by Vercel's CDN —
+NOT through this Flask app. See: https://vercel.com/docs/frameworks/backend/flask
+("Flask's app.static_folder should not be used for static files on Vercel.")
 
+Exposes two APIs:
   POST /predict_crop     -> ML crop recommendation (RandomForest)
   POST /recommend_thali  -> rule-based nutrition/meal recommendation
 
-Run:
+Local dev:
     python app.py
-Then open http://localhost:5000
+Then open http://localhost:5000/health to verify.
 """
 
 import os
 
 import joblib
 import pandas as pd
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_DIR = BASE_DIR
 MODEL_PATH = os.path.join(BASE_DIR, "crop_model.pkl")
 
-app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+app = Flask(__name__)
 CORS(app)
 
 # ------------------------------------------------------------------
@@ -233,20 +235,6 @@ def health_check():
     return jsonify({"status": "ok", "model_classes": CLASSES})
 
 
-# ------------------------------------------------------------------
-# Serve the existing static frontend from the repo root
-# ------------------------------------------------------------------
-@app.route("/")
-def serve_index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
-
-
-@app.route("/<path:filename>")
-def serve_static(filename):
-    return send_from_directory(FRONTEND_DIR, filename)
-
-
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
