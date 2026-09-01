@@ -1,8 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "app.py": {
+    "api/app.py": {
       "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/predict_crop", "destination": "/api/app" },
+    { "source": "/recommend_thali", "destination": "/api/app" },
+    { "source": "/health", "destination": "/api/app" }
+  ]
 }
