@@ -355,7 +355,74 @@ async function handlePhoneLogin(event) {
    ============================================================ */
 // Frontend (public/) and backend (app.py) are both deployed on the same
 // Vercel project now, sharing one domain — same-origin, no absolute URL needed.
+// IMPORTANT: this only works if vercel.json actually routes /predict_crop
+// and /recommend_thali to app.py as a Python serverless function. Without
+// that config, Vercel serves static files only and these fetches will
+// always fail with a network/404 error — see the fetchBackend() messages
+// below, they will tell you exactly which case you're in.
 const API_BASE = "";
+const BACKEND_TIMEOUT_MS = 10000;
+
+/**
+ * Wraps fetch with a timeout and clearer, more specific error messages so
+ * "backend not deployed" (network/404) can be told apart from
+ * "backend deployed but the request failed" (500/validation error) from
+ * "backend is slow/hanging" (timeout).
+ */
+async function fetchBackend(path, payload) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE}${path}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const bodyText = await response.text().catch(() => "");
+            console.warn(`Backend ${path} returned HTTP ${response.status}:`, bodyText);
+            return {
+                ok: false,
+                reason: `backend-error`,
+                message: `The prediction server responded with an error (HTTP ${response.status}). This means app.py is deployed but hit a bug — check the Vercel function logs.`,
+            };
+        }
+
+        let json;
+        try {
+            json = await response.json();
+        } catch (parseErr) {
+            console.error(`Backend ${path} returned invalid JSON:`, parseErr);
+            return {
+                ok: false,
+                reason: "bad-json",
+                message: "The prediction server responded but sent back something that wasn't valid JSON.",
+            };
+        }
+
+        return { ok: true, data: json };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === "AbortError") {
+            console.error(`Backend ${path} timed out after ${BACKEND_TIMEOUT_MS}ms`);
+            return {
+                ok: false,
+                reason: "timeout",
+                message: "The prediction server took too long to respond and was skipped.",
+            };
+        }
+        console.error(`Backend ${path} network error:`, error);
+        return {
+            ok: false,
+            reason: "network",
+            message: "Couldn't reach the prediction server at all (likely app.py isn't deployed/routed on Vercel yet — check vercel.json).",
+        };
+    }
+}
 
 async function handleLandSubmit(event) {
     event.preventDefault();
@@ -389,25 +456,15 @@ async function handleLandSubmit(event) {
     };
 
     let prediction = null;
-    try {
-        const response = await fetch(`${API_BASE}/predict_crop`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        if (response.ok) {
-            prediction = await response.json();
-            const topList = prediction.top_matches
-                .map(m => `${m.crop} (${m.match_percentage}%)`)
-                .join("\n");
-            alert(`📊 AI PREDICTION COMPLETE!\n\n🏆 Top Recommendation: ${prediction.recommended_crop} (${prediction.match_percentage}% match)\n\nOther good options:\n${topList}\n\nSoil Health Score: ${prediction.soil_health_score}/100`);
-        } else {
-            console.warn("Prediction API returned an error", await response.text());
-            alert("Prediction engine returned an error. Saving profile anyway...");
-        }
-    } catch (error) {
-        console.error("Prediction API Error:", error);
-        alert("Prediction engine offline (is the Flask backend running?). Saving profile anyway...");
+    const result = await fetchBackend("/predict_crop", payload);
+    if (result.ok) {
+        prediction = result.data;
+        const topList = prediction.top_matches
+            .map(m => `${m.crop} (${m.match_percentage}%)`)
+            .join("\n");
+        alert(`📊 AI PREDICTION COMPLETE!\n\n🏆 Top Recommendation: ${prediction.recommended_crop} (${prediction.match_percentage}% match)\n\nOther good options:\n${topList}\n\nSoil Health Score: ${prediction.soil_health_score}/100`);
+    } else {
+        alert(`⚠️ ${result.message}\n\nSaving your land profile anyway — you can get the AI prediction later once this is fixed.`);
     }
 
     try {
@@ -448,13 +505,24 @@ function captureLocation() {
         return;
     }
 
+    // Geolocation requires a secure context (HTTPS or localhost). If this
+    // page is opened via file:// (double-clicking the HTML file) it will
+    // fail silently in most browsers — deploying on Vercel (HTTPS) resolves
+    // this automatically, but flag it clearly for local testing too.
+    if (!window.isSecureContext) {
+        statusEl.textContent = "Location needs HTTPS — open this via the deployed site or localhost, not a local file.";
+        return;
+    }
+
     statusEl.textContent = "Detecting...";
     if (btnEl) btnEl.disabled = true;
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
-            document.getElementById("userLat").value = pos.coords.latitude;
-            document.getElementById("userLng").value = pos.coords.longitude;
+            const latEl = document.getElementById("userLat");
+            const lngEl = document.getElementById("userLng");
+            if (latEl) latEl.value = pos.coords.latitude;
+            if (lngEl) lngEl.value = pos.coords.longitude;
             statusEl.textContent = "✓ Location captured";
             if (btnEl) btnEl.disabled = false;
         },
@@ -468,7 +536,8 @@ function captureLocation() {
 }
 window.captureLocation = captureLocation;
 
-/* ─── NUTRITION SCORE (real, per-person — not a fixed per-condition number) ───
+/* ============================================================
+   NUTRITION SCORE (real, per-person — not a fixed per-condition number)
    Base 85: the rule engine already tailors grain/dal/veg/protein to the
    selected health condition, so a correctly generated plan starts strong.
    From there we adjust for things that ACTUALLY vary by person:
@@ -477,7 +546,8 @@ window.captureLocation = captureLocation;
      - life-stage personalization (pregnancy/lactation guidance actually added)
      - budget fit: whether the person's stated budget realistically matches
        what this condition's foods typically cost (fish/nuts for thyroid
-       support cost more than a general diet, for example) */
+       support cost more than a general diet, for example)
+   ============================================================ */
 const CONDITION_TYPICAL_BUDGET = {
     none: "low",
     diabetes: "medium",
@@ -528,27 +598,18 @@ async function handleHealthSubmit(event) {
     };
 
     let thali = null;
-    try {
-        const response = await fetch(`${API_BASE}/recommend_thali`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        if (response.ok) {
-            thali = await response.json();
-            const plan = thali.thali_plan;
-            let msg = `🍽️ YOUR RECOMMENDED THALI (${thali.region_style})\n\n`;
-            msg += `Grain: ${plan.grain}\nDal/Curry: ${plan.dal_or_curry}\nVegetable: ${plan.vegetable}\nProtein: ${plan.protein}\nSide: ${plan.side}\n\n`;
-            msg += `Health note: ${thali.health_note}\n`;
-            if (thali.life_stage_note) msg += `${thali.life_stage_note}\n`;
-            if (thali.allergy_warnings.length) msg += `\n⚠️ ${thali.allergy_warnings.join(" ")}`;
-            alert(msg);
-        } else {
-            console.warn("Thali API returned an error", await response.text());
-        }
-    } catch (error) {
-        console.error("Thali API Error:", error);
-        alert("Recommendation engine offline (is the Flask backend running?). Saving profile anyway...");
+    const result = await fetchBackend("/recommend_thali", payload);
+    if (result.ok) {
+        thali = result.data;
+        const plan = thali.thali_plan;
+        let msg = `🍽️ YOUR RECOMMENDED THALI (${thali.region_style})\n\n`;
+        msg += `Grain: ${plan.grain}\nDal/Curry: ${plan.dal_or_curry}\nVegetable: ${plan.vegetable}\nProtein: ${plan.protein}\nSide: ${plan.side}\n\n`;
+        msg += `Health note: ${thali.health_note}\n`;
+        if (thali.life_stage_note) msg += `${thali.life_stage_note}\n`;
+        if (thali.allergy_warnings.length) msg += `\n⚠️ ${thali.allergy_warnings.join(" ")}`;
+        alert(msg);
+    } else {
+        alert(`⚠️ ${result.message}\n\nSaving your profile anyway — the recommendation will appear once this is fixed.`);
     }
 
     const healthData = {
@@ -593,6 +654,14 @@ document.addEventListener("DOMContentLoaded", function() {
     // Bind Land Form
     const landForm = document.getElementById("landForm");
     if(landForm) landForm.addEventListener("submit", handleLandSubmit);
+
+    // Safety-net binding for the location button: if the HTML doesn't have
+    // an inline onclick="captureLocation()" wired up, this ensures the
+    // button still works instead of silently doing nothing on click.
+    const detectBtn = document.getElementById("detectLocBtn");
+    if (detectBtn && !detectBtn.hasAttribute("onclick")) {
+        detectBtn.addEventListener("click", captureLocation);
+    }
 });
 
 window.onload = async function() {
