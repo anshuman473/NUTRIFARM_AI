@@ -353,11 +353,9 @@ async function handlePhoneLogin(event) {
 /* ============================================================
    6. LAND SUBMISSION & ML-BACKED CROP PREDICTION
    ============================================================ */
-// Frontend (Vercel) and backend (Render) are separate deployments now,
-// so this must be the backend's absolute URL, not same-origin "".
-// ⚠️ REPLACE this with your actual Render URL after deploying app.py —
-// it'll look like https://nutrifarm-backend-XXXX.onrender.com
-const API_BASE = "https://YOUR-RENDER-APP.onrender.com";
+// Frontend (public/) and backend (app.py) are both deployed on the same
+// Vercel project now, sharing one domain — same-origin, no absolute URL needed.
+const API_BASE = "";
 
 async function handleLandSubmit(event) {
     event.preventDefault();
