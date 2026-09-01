@@ -1,7 +1,7 @@
 {
   "$schema": "https://nutrifarm-ai.vercel.app/vercel.json",
   "functions": {
-    "api/app.py": {
+    "/app.py": {
       "maxDuration": 30
     }
   },
