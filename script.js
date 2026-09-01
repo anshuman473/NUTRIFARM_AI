@@ -353,9 +353,11 @@ async function handlePhoneLogin(event) {
 /* ============================================================
    6. LAND SUBMISSION & ML-BACKED CROP PREDICTION
    ============================================================ */
-// Same-origin Flask backend (app.py serves this frontend directly).
-// If you deploy the frontend separately, point this at the backend's URL.
-const API_BASE = "https://nutrifarm-ai.vercel.app";
+// Frontend (Vercel) and backend (Render) are separate deployments now,
+// so this must be the backend's absolute URL, not same-origin "".
+// ⚠️ REPLACE this with your actual Render URL after deploying app.py —
+// it'll look like https://nutrifarm-backend-XXXX.onrender.com
+const API_BASE = "https://YOUR-RENDER-APP.onrender.com";
 
 async function handleLandSubmit(event) {
     event.preventDefault();
@@ -468,6 +470,45 @@ function captureLocation() {
 }
 window.captureLocation = captureLocation;
 
+/* ─── NUTRITION SCORE (real, per-person — not a fixed per-condition number) ───
+   Base 85: the rule engine already tailors grain/dal/veg/protein to the
+   selected health condition, so a correctly generated plan starts strong.
+   From there we adjust for things that ACTUALLY vary by person:
+     - allergy conflicts detected in the plan (real substring-match warnings
+       from the backend) — the single biggest safety signal
+     - life-stage personalization (pregnancy/lactation guidance actually added)
+     - budget fit: whether the person's stated budget realistically matches
+       what this condition's foods typically cost (fish/nuts for thyroid
+       support cost more than a general diet, for example) */
+const CONDITION_TYPICAL_BUDGET = {
+    none: "low",
+    diabetes: "medium",
+    hypertension: "medium",
+    anemia: "low",
+    thyroid: "high",
+};
+const BUDGET_TIERS = ["low", "medium", "high"];
+
+function computeNutritionScore(thali, payload) {
+    let score = 85;
+
+    const warnings = thali.allergy_warnings || [];
+    score -= Math.min(warnings.length * 15, 45);
+
+    if (payload.lifeStage && payload.lifeStage !== "standard" && thali.life_stage_note) {
+        score += 5;
+    }
+
+    const typical = CONDITION_TYPICAL_BUDGET[payload.healthCondition] || "medium";
+    const chosen = payload.budgetPref || "medium";
+    const gap = Math.abs(BUDGET_TIERS.indexOf(typical) - BUDGET_TIERS.indexOf(chosen));
+    if (gap === 0) score += 8;
+    else if (gap === 1) score += 3;
+    else score -= 5; // low budget chosen but condition needs pricier foods, or vice versa
+
+    return Math.max(40, Math.min(98, Math.round(score)));
+}
+
 async function handleHealthSubmit(event) {
     event.preventDefault();
     const getVal = (id) => document.getElementById(id)?.value || "";
@@ -520,6 +561,8 @@ async function handleHealthSubmit(event) {
         budgetPref: payload.budgetPref,
         lifeStage: payload.lifeStage,
         recommended_thali: thali ? thali.thali_plan : null,
+        nutrition_score: thali ? computeNutritionScore(thali, payload) : null,
+        allergy_warning_count: thali ? (thali.allergy_warnings || []).length : 0,
         latitude: getVal("userLat") || null,
         longitude: getVal("userLng") || null,
         submissionDate: new Date(),
