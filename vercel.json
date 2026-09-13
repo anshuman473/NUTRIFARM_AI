@@ -1,8 +1,0 @@
-{
-  "$schema": "https://nutrifarm-ai.vercel.app/vercel.json",
-  "rewrites": [
-    { "source": "/predict_crop", "destination": "/app" },
-    { "source": "/recommend_thali", "destination": "/app" },
-    { "source": "/health", "destination": "/app" }
-  ]
-}
